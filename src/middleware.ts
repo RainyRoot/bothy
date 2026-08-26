@@ -19,6 +19,9 @@ export async function middleware(request: NextRequest) {
   const session = await verifyValue<{ userId: string }>(sessionCookie);
 
   if (!session) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
