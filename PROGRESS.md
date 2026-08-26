@@ -1,9 +1,9 @@
 # PROGRESS.md
 
-**Stand:** Stufe 0 — Gerüst, Auth (Nutzername/Passwort) und Push-Code
-stehen. Setup/Login Ende-zu-Ende gegen echte lokale DB getestet. Der
-eigentliche Push-Test (Browser → Service Worker → Zusteller →
-Benachrichtigung) steht noch aus.
+**Stand:** Stufe 0 — Gerüst, Auth (Nutzername/Passwort) und Push-Pipeline
+stehen und sind **im Desktop-Browser Ende-zu-Ende bewiesen**: Setup,
+Login, „Push aktivieren", Test-Benachrichtigung kam nach 2 Minuten an.
+Offen ist nur noch der eigentliche DoD auf echten Handys.
 **Letzte Aktualisierung:** 2026-08-26
 **Branch:** `dev`
 
@@ -11,14 +11,15 @@ Benachrichtigung) steht noch aus.
 
 ## Nächster Schritt
 
-Im Browser auf **http://localhost:3000**: `/setup` mit Invite-Code aus
-`.env` (`bothy-dev`) für beide Personen durchklicken (echte Namen/
-Passwörter, die Test-Accounts wurden gelöscht), dann auf `/` „Push
-aktivieren" → Benachrichtigungs-Erlaubnis erteilen → „Test-
-Benachrichtigung in 2 Minuten" klicken. Erst wenn das lokal sauber
-durchläuft, ist Stufe 0 inhaltlich fertig — der DoD selbst (drei Tage,
-beide echten Handys, App geschlossen) kommt danach und setzt eine
-erreichbare Domain/Tailscale-Setup voraus (siehe „Offene Fragen").
+Der lokale Beweis auf dem Desktop steht. Für den echten DoD aus
+PLAN.md 5 (beide Handys, App geschlossen, 30 min Standby, drei Tage
+in Folge) müssen die Handys die App erreichen können — das braucht
+einen secure context (siehe PLAN.md 6: `192.168.x.x` reicht nicht für
+Service Worker). Das hängt an der noch offenen Hosting-Entscheidung
+(NAS+Tailscale oder Hetzner, siehe „Offene Fragen"). Vorschlag für
+die nächste Session: Tailscale zwischen diesem Rechner (oder dem NAS)
+und beiden Handys einrichten, `tailscale cert` für ein gültiges
+Zertifikat, dann den Drei-Tage-Test starten.
 
 **Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
 Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
@@ -46,9 +47,9 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Repo, Next.js 15, Prisma 7, Docker Compose (app + postgres + caddy) — Compose ungetestet, siehe Docker-Hinweis im Session-Log
   - [x] Schema aus `PLAN.md` Abschnitt 3, beide Migrationen gegen echte DB gelaufen
   - [x] Auth: Invite-Code beim Setup, dann Login — **Nutzername/Passwort statt Passkeys** (Entscheidung geändert, siehe unten), Ende-zu-Ende getestet
-  - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — Code steht, noch nicht im Browser getestet
-  - [x] Button „Test-Benachrichtigung in 2 Minuten" — Code steht, noch nicht im Browser getestet
-  - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge
+  - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — im Desktop-Browser (Chrome) getestet, funktioniert
+  - [x] Button „Test-Benachrichtigung in 2 Minuten" — getestet, Zustellung nach 2 Minuten bestätigt
+  - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge — braucht erreichbare Domain/Tailscale (siehe „Nächster Schritt")
 - [ ] **Stufe 1 — Töpfe**
 - [ ] **Stufe 2 — Kalender**
 - [ ] **Stufe 3 — Essensplan & Einkaufsliste**
@@ -151,10 +152,18 @@ Seite lädt mit Nutzernamen. Middleware gab unauthentifizierte
 API-Aufrufe fälschlich als Redirect statt 401 zurück — gefixt.
 Test-Accounts danach gelöscht, DB ist für Chris/Mara bereit.
 
-**Noch nicht getestet:** der eigentliche Push-Teil im Browser
-(Service-Worker-Registrierung, Benachrichtigungs-Erlaubnis, ob die
-Test-Benachrichtigung nach 2 Minuten wirklich ankommt) — das ist der
-nächste Schritt.
+**Push-Test im Browser erfolgreich.** Vorher zwei Stolperer: (1) der
+Next-Dev-Server lief parallel zu einem `npm run build`-Lauf im selben
+`.next`-Ordner und geriet dadurch durcheinander (Manifest-Fehler,
+Seite lud bei Chris nicht) — sauberer Neustart mit gelöschtem `.next`
+behoben. (2) „Push aktivieren" scheiterte mit „Registration failed -
+push service error" — Chris' Adblocker blockierte `fcm.googleapis.com`,
+Googles Push-Zustelldienst. Im Inkognito-Fenster (als Ausweichversuch)
+kam stattdessen „Benachrichtigungen wurden nicht erlaubt" — Chrome
+blockt Notification-Permission-Prompts in Inkognito standardmäßig
+ohne sichtbaren Dialog. Lösung: normales Fenster, Adblocker für die
+Seite pausiert, danach lief die Test-Benachrichtigung nach 2 Minuten
+zuverlässig durch.
 
 Kleinere Stolperstelle: der Next-Standalone-Build wirft unter Windows
 lokal eine harmlose Warnung beim Kopieren von `node:buffer`-Chunks
