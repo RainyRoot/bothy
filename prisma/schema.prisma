@@ -135,3 +135,37 @@ model ReminderJob {
   @@unique([terminId, userId, dueAt])
   @@index([dueAt, sentAt])
 }
+
+// ---------- Essensplan & Einkaufsliste ----------
+// Kein Schema in PLAN.md 3 vorgegeben (Stufe 3 war dort nicht
+// ausdetailliert). Bewusst minimal, siehe Nicht-Ziele PLAN.md 2:
+// keine Rezeptdatenbank, keine Nährwerte, keine Mengenumrechnung —
+// Zutaten sind Freitext, eine Zeile pro Zutat.
+
+model Mahlzeit {
+  id        String   @id @default(cuid())
+  datum     DateTime @db.Date
+  titel     String
+  zutaten   String // eine Zutat pro Zeile, Freitext
+  createdAt DateTime @default(now())
+
+  @@index([datum])
+}
+
+model Einkaufsliste {
+  id        String               @id @default(cuid())
+  woche     DateTime             @db.Date // Montag der Woche, eindeutig pro Woche
+  items     EinkaufslistenItem[]
+  createdAt DateTime             @default(now())
+
+  @@unique([woche])
+}
+
+model EinkaufslistenItem {
+  id              String        @id @default(cuid())
+  einkaufslisteId String
+  einkaufsliste   Einkaufsliste @relation(fields: [einkaufslisteId], references: [id], onDelete: Cascade)
+  text            String
+  abgehakt        Boolean       @default(false)
+  sortierung      Int           @default(0)
+}

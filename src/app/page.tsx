@@ -28,6 +28,9 @@ export default async function Home() {
         <Link href="/kalender" className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background">
           Kalender
         </Link>
+        <Link href="/essensplan" className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background">
+          Essensplan
+        </Link>
       </div>
       <PushSetup />
       <LogoutButton />

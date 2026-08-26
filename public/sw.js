@@ -1,3 +1,23 @@
+// Netzwerk-zuerst, Cache als Fallback: erlaubt Offline-Nutzung (z.B. Einkaufsliste
+// im Supermarkt) für alles, was mindestens einmal online geladen wurde.
+const CACHE_NAME = "bothy-cache-v1";
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(async () => (await caches.match(event.request)) ?? Response.error()),
+  );
+});
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
