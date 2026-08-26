@@ -3,8 +3,9 @@
 **Stand:** Stufe 0 (Gerüst, Auth, Push) im Desktop-Browser Ende-zu-Ende
 bewiesen, der Drei-Tage-Handy-DoD ist bewusst zurückgestellt (Chris'
 Entscheidung — erst weiter an der App, Rollout auf die Handys später).
-Stufe 1 — Töpfe ist jetzt gebaut und gegen die echte DB getestet
-(noch nicht im Browser).
+Stufe 1 — Töpfe von Chris im Browser getestet und für gut befunden.
+Stufe 2 — Kalender ist jetzt gebaut und ausführlich gegen die echte DB
+getestet (curl) — noch nicht im Browser.
 **Letzte Aktualisierung:** 2026-08-26
 **Branch:** `dev`
 
@@ -12,10 +13,11 @@ Stufe 1 — Töpfe ist jetzt gebaut und gegen die echte DB getestet
 
 ## Nächster Schritt
 
-Töpfe im Browser durchklicken: `/toepfe` — Topf anlegen, Buchung
-erfassen (Quick-Add direkt in der Liste), Umbuchen, bei einem
-Sparziel-Topf den Fortschrittsbalken/die Monatsrate prüfen,
-Monatsstart einmal durchlaufen lassen. Bisher nur per curl getestet.
+Kalender im Browser durchklicken: `/kalender` — Termin anlegen (mit/
+ohne Wiederholung, ganztägig/mit Uhrzeit), Monatsraster + Agenda
+prüfen, Aussetzen/Beenden/Löschen testen. Backend ist bereits
+ausführlich per curl verifiziert (siehe Session-Log), im Browser aber
+noch nicht angeschaut.
 
 Danach offen: der Stufe-0-DoD auf echten Handys steht noch aus (siehe
 „Offene Fragen" — Tailscale-Login war schon gestartet, dann auf
@@ -52,11 +54,16 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — im Desktop-Browser (Chrome) getestet, funktioniert
   - [x] Button „Test-Benachrichtigung in 2 Minuten" — getestet, Zustellung nach 2 Minuten bestätigt
   - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge — bewusst zurückgestellt, siehe „Nächster Schritt"
-- [x] **Stufe 1 — Töpfe** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+- [x] **Stufe 1 — Töpfe** (gebaut, im Browser von Chris getestet)
   - [x] Töpfe anlegen/archivieren, Buchungen erfassen, Umbuchen, Fortschrittsbalken bei Sparzielen, Monatsstart-Aktion
-  - [x] Liste pollt alle 10s (DoD: Änderung binnen 30s sichtbar) — noch nicht mit zwei gleichzeitigen Sessions getestet
-  - [ ] **DoD:** siehe `PLAN.md` 5, noch nicht im Browser/auf zwei Geräten verifiziert
-- [ ] **Stufe 2 — Kalender**
+  - [x] Liste pollt alle 10s (DoD: Änderung binnen 30s sichtbar) — noch nicht mit zwei gleichzeitigen Sessions/Geräten getestet
+  - [ ] **DoD:** siehe `PLAN.md` 5, noch nicht auf zwei Geräten gleichzeitig verifiziert
+- [x] **Stufe 2 — Kalender** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+  - [x] Termin-CRUD, Wiederholungen (wöchentlich/monatlich/jährlich), Erinnerungen, Monatsraster, Agenda-Liste
+  - [x] Löschen, Serie beenden, Einzeltermin aussetzen (PLAN.md 4.3)
+  - [x] Materialisierer (60-Tage-Fenster, täglich 03:00 + sofort nach Änderung) über denselben Expansionscode wie die Kalenderansicht
+  - [x] **DoD-Fälle per curl verifiziert:** Zeitzonen-Test (Geburtstag 1. März erscheint nicht am 28.2.), wöchentlich/monatlich korrekt über 3 Monate, Monatsklemmung am 31. bleibt stabil (kein Drift auf den 30.), `betrifft=PARTNER_A` erreicht nur einen Nutzer
+  - [ ] Noch nicht im Browser angeschaut; echte Zustellung der Erinnerungs-Pushes noch nicht beobachtet (nur ReminderJob-Zeilen in der DB geprüft)
 - [ ] **Stufe 3 — Essensplan & Einkaufsliste**
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
@@ -118,6 +125,58 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-26 (Fortsetzung 2) — Stufe 2: Kalender
+Chris hat Töpfe im Browser getestet ("supi") — weiter mit Stufe 2 laut
+Plan-Reihenfolge. Termin-CRUD, Wiederholungen, Erinnerungen,
+Monatsraster + Agenda-Liste, die drei Aktionen aus PLAN.md 4.3
+(Löschen/Beenden/Aussetzen) gebaut.
+
+Kernstück ist `lib/kalender-shared.ts::expandiereTermin` — eine reine,
+UTC-sichere Funktion ohne Server-Importe, die sowohl die Kalender-API
+als auch der Materialisierer nutzen (harte Regel aus CLAUDE.md). Dazu
+`lib/timezone.ts`: wandelt Berlin-Ortszeit-Eingaben (Formulare) nach
+UTC und zurück, inklusive Sommerzeit — nur mit der eingebauten
+Intl-API, keine neue Dependency.
+
+**PARTNER_A/PARTNER_B** sind im Schema keine festen Rollen. Als
+Konvention festgelegt: Registrierungsreihenfolge beim Setup (wer sich
+zuerst per Invite-Code registriert, ist PARTNER_A). Kein Schema
+nötig, keine Rückfrage, reine Implementierungsentscheidung wie schon
+bei Monatsstart.
+
+Materialisierer läuft jetzt über `instrumentation.ts` als zweite
+Hintergrundschleife neben dem Zusteller: einmal sofort beim
+Serverstart, danach täglich 03:00, plus sofort nach Anlegen/Ändern
+eines Termins (alte offene Jobs löschen, neu materialisieren — PLAN.md
+4.1).
+
+Ausführlich per curl gegen die echte DB getestet, inklusive der drei
+DoD-kritischen Fälle aus PLAN.md 5:
+- **Zeitzonen-Test bestanden:** Geburtstag am 1. März (jährlich,
+  ganztägig) erscheint in der März-Abfrage, nicht am 28. Februar.
+- **Monatsklemmung ohne Drift:** Termin am 31. läuft Aug 31 → Sep 30
+  (geklemmt, September hat nur 30 Tage) → Okt 31 (zurück auf 31, kein
+  dauerhaftes Kleben am 30. wie bei einer naiven "+1 Monat auf letztes
+  Vorkommen"-Implementierung).
+- Wöchentlich und monatlich über 3 Monate ergaben die erwartete
+  Anzahl Vorkommen.
+- `betrifft=PARTNER_A` erzeugte `ReminderJob`-Zeilen nur für einen
+  Nutzer (per DB-Query geprüft).
+- Aussetzen (ein Datum übersprungen, Rest der Serie bleibt) und
+  Beenden (serienEnde ab heute, Zukunft verschwindet) beide verifiziert.
+
+Ein beim Testen aufgefallenes „M�ll raus" stellte sich als reines
+Encoding-Artefakt der Bash-Tool-Kommandozeile unter Windows heraus
+(Umlaut direkt im Shell-Befehl), nicht als App-Bug — mit einer
+UTF-8-Datei statt Inline-String erneut getestet, „Müll raus (Test)"
+kam korrekt zurück. Für künftige Tests mit Umlauten: `--data-binary
+@datei.json` statt Umlaute direkt im Bash-Befehl.
+
+**Noch nicht getestet:** Kalender im Browser (nur curl bisher), und ob
+die materialisierten ReminderJobs tatsächlich als Push ankommen (der
+Zusteller aus Stufe 0 sollte sie automatisch abholen, aber nicht
+explizit für Kalender-Erinnerungen beobachtet).
 
 ### 2026-08-26 (Fortsetzung) — Stufe 1: Töpfe
 Auf Wunsch von Chris den Drei-Tage-Handy-DoD zurückgestellt (Tailscale-
