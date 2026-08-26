@@ -1,11 +1,12 @@
 # PROGRESS.md
 
-**Stand:** Stufe 0 (Gerüst, Auth, Push) im Desktop-Browser Ende-zu-Ende
-bewiesen, der Drei-Tage-Handy-DoD ist bewusst zurückgestellt (Chris'
-Entscheidung — erst weiter an der App, Rollout auf die Handys später).
-Stufe 1 — Töpfe von Chris im Browser getestet und für gut befunden.
-Stufe 2 — Kalender ist jetzt gebaut und ausführlich gegen die echte DB
-getestet (curl) — noch nicht im Browser.
+**Stand:** Alle vier Stufen aus `PLAN.md` sind jetzt code-komplett
+(Gerüst/Auth/Push, Töpfe, Kalender, Essensplan). Stufe 0 (Push) und
+Stufe 1 (Töpfe) hat Chris im Browser getestet, Stufe 2 (Kalender) und
+Stufe 3 (Essensplan) bisher nur per curl gegen die echte DB — noch
+nicht im Browser. Der Drei-Tage-Handy-DoD aus Stufe 0 ist weiterhin
+bewusst zurückgestellt (Chris' Entscheidung — erst die App fertig
+bauen, Handy-Rollout danach).
 **Letzte Aktualisierung:** 2026-08-26
 **Branch:** `dev`
 
@@ -13,17 +14,21 @@ getestet (curl) — noch nicht im Browser.
 
 ## Nächster Schritt
 
-Kalender im Browser durchklicken: `/kalender` — Termin anlegen (mit/
-ohne Wiederholung, ganztägig/mit Uhrzeit), Monatsraster + Agenda
-prüfen, Aussetzen/Beenden/Löschen testen. Backend ist bereits
-ausführlich per curl verifiziert (siehe Session-Log), im Browser aber
-noch nicht angeschaut.
+1. Essensplan/Einkaufsliste im Browser durchklicken: `/essensplan`
+   Mahlzeiten für eine Woche anlegen, `/einkaufsliste` erzeugen, Häkchen
+   setzen (auch offline testen — Flugmodus im Browser/DevTools,
+   Häkchen sollten trotzdem reagieren und beim Reconnect syncen),
+   Einkauf mit Betrag in einen Topf buchen.
+2. Kalender im Browser durchklicken (siehe Stufe-2-Zeile unten) —
+   auch das steht noch aus.
+3. Danach: der Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" —
+   Tailscale-Login war schon gestartet, dann auf Chris' Wunsch
+   zurückgestellt). Login-URL war
+   `https://login.tailscale.com/a/e11d2c9015be0`, vermutlich
+   abgelaufen — bei Bedarf `tailscale up` neu ausführen.
 
-Danach offen: der Stufe-0-DoD auf echten Handys steht noch aus (siehe
-„Offene Fragen" — Tailscale-Login war schon gestartet, dann auf
-Chris' Wunsch zurückgestellt zugunsten von Feature-Arbeit). Login-URL
-war `https://login.tailscale.com/a/e11d2c9015be0` — vermutlich
-abgelaufen, bei Bedarf `tailscale up` neu ausführen.
+Danach ist inhaltlich nichts mehr offen aus PLAN.md 5 außer den
+Browser-/Geräte-Verifikationen selbst.
 
 **Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
 Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
@@ -64,7 +69,13 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Materialisierer (60-Tage-Fenster, täglich 03:00 + sofort nach Änderung) über denselben Expansionscode wie die Kalenderansicht
   - [x] **DoD-Fälle per curl verifiziert:** Zeitzonen-Test (Geburtstag 1. März erscheint nicht am 28.2.), wöchentlich/monatlich korrekt über 3 Monate, Monatsklemmung am 31. bleibt stabil (kein Drift auf den 30.), `betrifft=PARTNER_A` erreicht nur einen Nutzer
   - [ ] Noch nicht im Browser angeschaut; echte Zustellung der Erinnerungs-Pushes noch nicht beobachtet (nur ReminderJob-Zeilen in der DB geprüft)
-- [ ] **Stufe 3 — Essensplan & Einkaufsliste**
+- [x] **Stufe 3 — Essensplan & Einkaufsliste** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+  - [x] Wochenplan (Mahlzeiten mit Freitext-Zutaten, kein Rezeptdatenbank-Overhead)
+  - [x] Einkaufsliste aggregiert + dedupliziert Zutaten der Woche
+  - [x] Service Worker bekam echtes Caching (vorher nur Push-Events) — nötig, damit die Liste offline überhaupt lädt
+  - [x] Häkchen laufen optimistisch mit localStorage-Queue + Sync bei `online`-Event (bewusst kein natives Background Sync, siehe Entscheidungen)
+  - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe
+  - [ ] Noch nicht im Browser getestet, insbesondere die Offline-Queue nicht in einem echten Browser-Offline-Zustand (nur der Code-Pfad, nicht das Verhalten selbst)
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -94,6 +105,10 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | Zusteller als selbst nachplanende Schleife (`instrumentation.ts`), nicht `setInterval` + rohes `FOR UPDATE SKIP LOCKED` | Compose fährt genau einen `app`-Container — die einzige reale Race-Bedingung ist ein überlappender Lauf mit sich selbst, wenn Zustellung >60s dauert. Ein „warte auf Ende, dann Timeout" vermeidet das ohne offene Transaktion über Netzwerk-Calls hinweg |
 | 2026-08-26 | Docker Desktop lokal aufgegeben, natives PostgreSQL 17 für die Entwicklung | Rechner hat eine alte MBR-Platte, WSL2/Hyper-V-Virtualisierung startet nicht (dasselbe Problem blockiert auch das Win11-Upgrade). `docker-compose.yml` bleibt unverändert für NAS/Hetzner |
 | 2026-08-26 | Auth: **Nutzername/Passwort statt Passkeys** (`crypto.scrypt`, kein neues Package), für beide Geräte | Kurswechsel von Chris — Passkey-Registrierung ließ sich auf dem Entwicklungsrechner nicht testen (kein Authenticator eingerichtet); statt Workaround bewusst vereinfacht. `Passkey`-Modell wieder aus dem Schema entfernt, `User.name` jetzt `@unique` |
+| 2026-08-26 | Stufe 3 wird gebaut, BiteWise ersetzt sie **nicht** | Rückfrage bei Chris beantwortet |
+| 2026-08-26 | Essensplan/Einkaufsliste-Schema neu entworfen (`Mahlzeit`, `Einkaufsliste`, `EinkaufslistenItem`) — Freitext-Zutaten, keine Rezeptablage | Stufe 3 hatte kein Schema in PLAN.md 3; Nicht-Ziele (PLAN.md 2) schließen Rezeptdatenbank/Nährwerte/Mengenumrechnung explizit aus |
+| 2026-08-26 | PARTNER_A/PARTNER_B = Registrierungsreihenfolge beim Setup, kein Schema-Feld | Bei genau zwei Nutzern reicht „wer hat sich zuerst registriert" als Konvention |
+| 2026-08-26 | Offline-Sync der Einkaufsliste über localStorage-Queue + `online`-Event, nicht die native Background-Sync-API | Echtes Background Sync bräuchte IndexedDB-Zugriff aus dem Service Worker (kein `localStorage` dort verfügbar) — für zwei Nutzer und eine Liste mit wenigen Einträgen reicht die einfachere Variante, die nur bei offener App synct statt auch bei geschlossenem Tab |
 
 ---
 
@@ -101,10 +116,9 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 
 Beantwortet werden sie von Chris, nicht von einer Instanz allein.
 
-- Hosting final: NAS + Tailscale oder Hetzner CX22? Spätestens vor Stufe 2. Der Play-Store-Pfad braucht Hetzner (`PLAN.md` 8).
+- Hosting final: NAS + Tailscale oder Hetzner CX22? Der Play-Store-Pfad braucht Hetzner (`PLAN.md` 8). Jetzt akut, da alle vier Stufen code-komplett sind und der Stufe-0-DoD echte Erreichbarkeit von beiden Handys braucht.
 - Domain
 - Farbschema, Icon, App-Name auf dem Homescreen
-- Verhältnis zu BiteWise — ersetzt Stufe 3 es, oder entfällt Stufe 3?
 
 ---
 
@@ -118,6 +132,7 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Wochenansicht mit Stundenraster
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
+- Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
 
 ---
 
@@ -125,6 +140,49 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-26 (Fortsetzung 3) — Stufe 3: Essensplan & Einkaufsliste
+Vor dem Bauen erst die offene Frage aus PROGRESS.md geklärt: BiteWise
+ersetzt Stufe 3 nicht, sie wird wie in PLAN.md 5 beschrieben gebaut
+(Chris' Antwort, jetzt in „Getroffene Entscheidungen").
+
+PLAN.md 3 hat für diese Stufe kein Schema — neu entworfen: `Mahlzeit`
+(Datum, Titel, Zutaten als Freitext, eine Zeile pro Zutat — bewusst
+keine Rezept-Entität zum Wiederverwenden, siehe Nicht-Ziele PLAN.md 2),
+`Einkaufsliste` + `EinkaufslistenItem` (pro Kalenderwoche, mit
+Abhak-Status).
+
+Wochenplan (`/essensplan`, 7-Tage-Ansicht) und Einkaufsliste
+(`/einkaufsliste`, aggregiert + dedupliziert Zutaten zeilenweise über
+alle Mahlzeiten der Woche) gebaut. „Einkauf abschließen" bucht Betrag
++ gewählten Topf direkt als `Buchung` — schließt den in PLAN.md 5
+geforderten Weg Essensplan→Liste→Buchung ohne zweite Eingabe.
+
+Für „offline abhakbar" fiel auf: der Service Worker aus Stufe 0 konnte
+bisher **nichts** offline ausliefern, er behandelte nur Push-Events,
+keine `fetch`-Requests. Nachgerüstet: Netzwerk-zuerst-mit-Cache-
+Fallback für alle GET-Requests derselben Origin, dazu eine allgemeine
+SW-Registrierung im Root-Layout (vorher registrierte sich der SW erst
+beim Klick auf „Push aktivieren"). Checkbox-Toggles laufen optimistisch
+im Client; schlägt der PATCH fehl, landet die Änderung in einer
+localStorage-Queue und wird beim `online`-Event nachgeholt — bewusst
+kein natives Background Sync (bräuchte IndexedDB-Zugriff im Service
+Worker, `localStorage` ist dort nicht verfügbar), für zwei Nutzer und
+kleine Listen reicht die einfachere Variante (siehe Entscheidungen,
+Grenze im Backlog vermerkt: syncet nur bei offener App, nicht bei
+geschlossenem Tab).
+
+Gegen die echte DB getestet: zwei Mahlzeiten mit teils gleichen
+Zutaten ("Zwiebeln" in beiden) ergaben eine Liste mit 5 statt 6
+Einträgen (Dedup korrekt), Abhaken persistiert, Buchen erzeugt korrekt
+eine negative Buchung im gewählten Topf. Ein vergessener Test-Topf aus
+einer früheren Session ("test123") fiel beim Aufräumen auf und wurde
+mitgelöscht.
+
+**Damit sind alle vier Stufen aus PLAN.md code-komplett.** Offen:
+Stufe 2 und 3 noch nicht im Browser angeschaut (nur curl), und der
+Stufe-0-DoD auf echten Handys — dafür wird die Hosting-Frage jetzt
+akut, siehe „Offene Fragen".
 
 ### 2026-08-26 (Fortsetzung 2) — Stufe 2: Kalender
 Chris hat Töpfe im Browser getestet ("supi") — weiter mit Stufe 2 laut
