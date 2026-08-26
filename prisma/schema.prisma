@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Nutzer & Push ----------
+
+model User {
+  id            String             @id @default(cuid())
+  name          String
+  createdAt     DateTime           @default(now())
+  buchungen     Buchung[]
+  subscriptions PushSubscription[]
+  jobs          ReminderJob[]
+}
+
+model PushSubscription {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String    @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime  @default(now())
+  lastOkAt  DateTime?
+}
+
+// ---------- Töpfe ----------
+
+enum TopfTyp {
+  VERBRAUCH // Einkaufsgeld, Taschengeld
+  SPARZIEL // Umzug, Tattoo
+}
+
+model Topf {
+  id         String    @id @default(cuid())
+  name       String
+  typ        TopfTyp
+  zielCent   Int? // nur bei SPARZIEL
+  zielDatum  DateTime? // nur bei SPARZIEL
+  farbe      String
+  sortierung Int       @default(0)
+  archiviert Boolean   @default(false)
+  buchungen  Buchung[]
+}
+
+model Buchung {
+  id         String   @id @default(cuid())
+  topfId     String
+  topf       Topf     @relation(fields: [topfId], references: [id], onDelete: Cascade)
+  betragCent Int // signed: + Zufluss, − Ausgabe. NIEMALS Float.
+  datum      DateTime @db.Date
+  notiz      String?
+  vonUserId  String
+  vonUser    User     @relation(fields: [vonUserId], references: [id])
+  transferId String? // zwei Buchungen mit gleicher transferId = Umbuchung
+  createdAt  DateTime @default(now())
+
+  @@index([topfId, datum])
+  @@index([transferId])
+}
+
+// ---------- Kalender ----------
+
+enum Rhythmus {
+  KEINE
+  WOECHENTLICH
+  MONATLICH
+  JAEHRLICH
+}
+
+enum Betrifft {
+  PARTNER_A
+  PARTNER_B
+  BEIDE
+}
+
+model Termin {
+  id           String             @id @default(cuid())
+  titel        String
+  ganztags     Boolean            @default(false)
+  start        DateTime // UTC. Bei ganztags: 00:00 UTC des Datums.
+  ende         DateTime?
+  ort          String?
+  notiz        String?
+  farbe        String?
+  betrifft     Betrifft           @default(BEIDE)
+  rhythmus     Rhythmus           @default(KEINE)
+  serienEnde   DateTime? // Serie läuft ab hier nicht weiter
+  archiviert   Boolean            @default(false) // ausgeblendet, Historie bleibt
+  erinnerungen TerminErinnerung[]
+  ausnahmen    TerminAusnahme[]
+  jobs         ReminderJob[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([start])
+}
+
+model TerminErinnerung {
+  id            String @id @default(cuid())
+  terminId      String
+  termin        Termin @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  minutenVorher Int // 0 | 15 | 60 | 1440 | 10080
+}
+
+model TerminAusnahme {
+  id       String   @id @default(cuid())
+  terminId String
+  termin   Termin   @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  datum    DateTime @db.Date // dieser eine Serientermin fällt aus
+
+  @@unique([terminId, datum])
+}
+
+model ReminderJob {
+  id       String    @id @default(cuid())
+  terminId String
+  termin   Termin    @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueAt    DateTime
+  sentAt   DateTime?
+  versuche Int       @default(0)
+  fehler   String?
+
+  @@unique([terminId, userId, dueAt])
+  @@index([dueAt, sentAt])
+}
