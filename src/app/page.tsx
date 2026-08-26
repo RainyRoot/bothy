@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { LogoutButton } from "./LogoutButton";
+import { PushSetup } from "./PushSetup";
+
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const userId = await getSessionUserId();
@@ -17,6 +20,7 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
       <p className="text-lg">Hallo, {user.name}.</p>
+      <PushSetup />
       <LogoutButton />
     </main>
   );
