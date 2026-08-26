@@ -14,26 +14,12 @@ datasource db {
 
 model User {
   id            String             @id @default(cuid())
-  name          String
+  name          String             @unique
+  passwordHash  String
   createdAt     DateTime           @default(now())
   buchungen     Buchung[]
   subscriptions PushSubscription[]
   jobs          ReminderJob[]
-  passkeys      Passkey[]
-}
-
-model Passkey {
-  id           String    @id @default(cuid())
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  credentialId String    @unique
-  publicKey    Bytes
-  counter      BigInt    @default(0)
-  deviceType   String
-  backedUp     Boolean
-  transports   String[]
-  createdAt    DateTime  @default(now())
-  lastUsedAt   DateTime?
 }
 
 model PushSubscription {

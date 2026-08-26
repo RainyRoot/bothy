@@ -11,8 +11,6 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "@simplewebauthn/browser": "^13.3.0",
-    "@simplewebauthn/server": "^13.3.3",
     "next": "15.5.24",
     "pg": "^8.23.0",
     "react": "19.1.0",

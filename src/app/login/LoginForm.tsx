@@ -2,33 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { startAuthentication } from "@simplewebauthn/browser";
 
 export function LoginForm() {
   const router = useRouter();
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function handleLogin() {
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      const optionsRes = await fetch("/api/login/options", { method: "POST" });
-      const optionsJSON = await optionsRes.json();
-      if (!optionsRes.ok) {
-        throw new Error(optionsJSON.error ?? "Fehler beim Login");
-      }
-
-      const authResponse = await startAuthentication({ optionsJSON });
-
-      const verifyRes = await fetch("/api/login/verify", {
+      const res = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response: authResponse }),
+        body: JSON.stringify({ name, password }),
       });
-      const verifyJSON = await verifyRes.json();
-      if (!verifyRes.ok) {
-        throw new Error(verifyJSON.error ?? "Anmeldung fehlgeschlagen");
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Anmeldung fehlgeschlagen");
       }
 
       router.push("/");
@@ -41,15 +35,34 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <label className="flex flex-col gap-1 text-sm">
+        Name
+        <input
+          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Passwort
+        <input
+          type="password"
+          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button
-        onClick={handleLogin}
+        type="submit"
         disabled={busy}
         className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
       >
-        {busy ? "…" : "Mit Passkey anmelden"}
+        {busy ? "…" : "Anmelden"}
       </button>
-    </div>
+    </form>
   );
 }

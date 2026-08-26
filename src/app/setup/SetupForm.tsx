@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { startRegistration } from "@simplewebauthn/browser";
 
 export function SetupForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -16,26 +16,14 @@ export function SetupForm() {
     setError(null);
     setBusy(true);
     try {
-      const optionsRes = await fetch("/api/setup/register-options", {
+      const res = await fetch("/api/setup/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, inviteCode }),
+        body: JSON.stringify({ name, inviteCode, password }),
       });
-      const optionsJSON = await optionsRes.json();
-      if (!optionsRes.ok) {
-        throw new Error(optionsJSON.error ?? "Fehler beim Setup");
-      }
-
-      const registrationResponse = await startRegistration({ optionsJSON });
-
-      const verifyRes = await fetch("/api/setup/register-verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response: registrationResponse }),
-      });
-      const verifyJSON = await verifyRes.json();
-      if (!verifyRes.ok) {
-        throw new Error(verifyJSON.error ?? "Passkey konnte nicht angelegt werden");
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? "Fehler beim Setup");
       }
 
       router.push("/");
@@ -68,13 +56,24 @@ export function SetupForm() {
           required
         />
       </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Passwort
+        <input
+          type="password"
+          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+        />
+      </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button
         type="submit"
         disabled={busy}
         className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
       >
-        {busy ? "…" : "Passkey anlegen"}
+        {busy ? "…" : "Account anlegen"}
       </button>
     </form>
   );
