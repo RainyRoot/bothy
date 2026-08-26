@@ -22,13 +22,13 @@ export default async function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
       <p className="text-lg">Hallo, {user.name}.</p>
       <div className="flex gap-3">
-        <Link href="/toepfe" className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href="/toepfe" className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]">
           Töpfe
         </Link>
-        <Link href="/kalender" className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href="/kalender" className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]">
           Kalender
         </Link>
-        <Link href="/essensplan" className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href="/essensplan" className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]">
           Essensplan
         </Link>
       </div>

@@ -104,7 +104,7 @@ function MahlzeitForm({ datum, onDone }: { datum: string; onDone: () => void }) 
       <button
         type="submit"
         disabled={busy}
-        className="self-start rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
+        className="self-start rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
       >
         {busy ? "…" : "Speichern"}
       </button>

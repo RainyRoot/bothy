@@ -120,7 +120,7 @@ export function NeuerTopfForm() {
       <button
         type="submit"
         disabled={busy}
-        className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+        className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
       >
         {busy ? "…" : "Anlegen"}
       </button>

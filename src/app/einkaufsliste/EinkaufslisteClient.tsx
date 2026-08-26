@@ -106,7 +106,7 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
         <button
           onClick={erzeugen}
           disabled={erzeugeBusy}
-          className="self-start rounded bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          className="self-start rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
         >
           {erzeugeBusy ? "…" : "Aus Essensplan erzeugen"}
         </button>
@@ -210,7 +210,7 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
         <button
           type="submit"
           disabled={busy}
-          className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
+          className="rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
         >
           Buchen
         </button>

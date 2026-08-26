@@ -68,7 +68,7 @@ export default async function KalenderPage({
 
       <Link
         href="/kalender/neu"
-        className="self-start rounded bg-foreground px-4 py-2 text-sm font-medium text-background"
+        className="self-start rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]"
       >
         + Neuer Termin
       </Link>

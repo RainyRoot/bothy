@@ -132,7 +132,7 @@ function TopfCard({ topf, onBooked }: { topf: TopfMitStand; onBooked: (t: TopfMi
           <button
             type="submit"
             disabled={busy}
-            className="rounded bg-foreground px-3 py-1 text-sm text-background disabled:opacity-50"
+            className="rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
           >
             OK
           </button>
