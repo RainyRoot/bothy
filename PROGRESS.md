@@ -1,8 +1,9 @@
 # PROGRESS.md
 
-**Stand:** Stufe 0 — Code für Gerüst, Auth und Push geschrieben, gegen
-echte DB noch ungetestet (Docker Desktop wurde neu installiert und
-initialisiert gerade)
+**Stand:** Stufe 0 — Gerüst, Auth (Nutzername/Passwort) und Push-Code
+stehen. Setup/Login Ende-zu-Ende gegen echte lokale DB getestet. Der
+eigentliche Push-Test (Browser → Service Worker → Zusteller →
+Benachrichtigung) steht noch aus.
 **Letzte Aktualisierung:** 2026-08-26
 **Branch:** `dev`
 
@@ -10,27 +11,43 @@ initialisiert gerade)
 
 ## Nächster Schritt
 
-1. Warten bis Docker Desktop einsatzbereit ist (`docker ps` läuft ohne
-   Fehler), dann `docker compose up -d postgres`.
-2. `npx prisma migrate dev --name init` — erste Migration, Migrationsfile
-   committen.
-3. Kompletten Flow manuell durchklicken: `/setup` (Invite-Code aus
-   `.env`, Passkey Person 1), noch mal `/setup` (Person 2), `/login`
-   mit Passkey, auf `/` „Push aktivieren" → „Test-Benachrichtigung in
-   2 Minuten". Erst wenn das lokal sauber durchläuft, ist Stufe 0
-   inhaltlich fertig — der DoD selbst (drei Tage, beide echten Handys)
-   kommt danach.
+Im Browser auf **http://localhost:3000**: `/setup` mit Invite-Code aus
+`.env` (`bothy-dev`) für beide Personen durchklicken (echte Namen/
+Passwörter, die Test-Accounts wurden gelöscht), dann auf `/` „Push
+aktivieren" → Benachrichtigungs-Erlaubnis erteilen → „Test-
+Benachrichtigung in 2 Minuten" klicken. Erst wenn das lokal sauber
+durchläuft, ist Stufe 0 inhaltlich fertig — der DoD selbst (drei Tage,
+beide echten Handys, App geschlossen) kommt danach und setzt eine
+erreichbare Domain/Tailscale-Setup voraus (siehe „Offene Fragen").
+
+**Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
+Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
+kein Response, siehe „Lokale DB neu starten" unten.
+
+---
+
+## Lokale DB neu starten
+
+PostgreSQL läuft NICHT als Windows-Dienst (Rechteproblem, siehe
+Session-Log). Nach einem Neustart des Rechners manuell wieder hochfahren:
+
+```powershell
+& "C:\Program Files\PostgreSQL\17\bin\pg_ctl.exe" start -D "C:\Program Files\PostgreSQL\17\data" -l "C:\Program Files\PostgreSQL\17\data\log\startup.log"
+```
+
+Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
+(steht auch in `.env`, welches nicht im Repo liegt).
 
 ---
 
 ## Stufen
 
-- [x] **Stufe 0 — Gerüst & Push-Beweis** (Code steht, DB-Test steht aus)
-  - [x] Repo, Next.js 15, Prisma 7, Docker Compose (app + postgres + caddy)
-  - [x] Schema aus `PLAN.md` Abschnitt 3 + `Passkey`-Modell — [ ] erste Migration noch nicht gelaufen
-  - [x] Auth: Invite-Code beim Setup, danach Passkeys (WebAuthn) — Code steht, ungetestet
-  - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — Code steht, ungetestet
-  - [x] Button „Test-Benachrichtigung in 2 Minuten" — Code steht, ungetestet
+- [x] **Stufe 0 — Gerüst & Push-Beweis** (Code steht, Push-Test steht aus)
+  - [x] Repo, Next.js 15, Prisma 7, Docker Compose (app + postgres + caddy) — Compose ungetestet, siehe Docker-Hinweis im Session-Log
+  - [x] Schema aus `PLAN.md` Abschnitt 3, beide Migrationen gegen echte DB gelaufen
+  - [x] Auth: Invite-Code beim Setup, dann Login — **Nutzername/Passwort statt Passkeys** (Entscheidung geändert, siehe unten), Ende-zu-Ende getestet
+  - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — Code steht, noch nicht im Browser getestet
+  - [x] Button „Test-Benachrichtigung in 2 Minuten" — Code steht, noch nicht im Browser getestet
   - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge
 - [ ] **Stufe 1 — Töpfe**
 - [ ] **Stufe 2 — Kalender**
@@ -58,11 +75,12 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | Next.js **15.5.24** fest gepinnt (nicht `@latest`) | `create-next-app@latest` installiert mittlerweile Next 16 — PLAN.md 1 will explizit 15 |
 | 2026-08-26 | Prisma **7.10.0** fest gepinnt (nicht `@latest`) | npms `prisma`-Paket zeigte `latest` auf eine Release-Candidate 8.0.0-rc.10, während `@prisma/client` reguär bei 7.10.0 stand — Mismatch vermieden |
 | 2026-08-26 | Prisma 7 braucht einen Driver-Adapter (`@prisma/adapter-pg`) | seit v7 verbindet sich `PrismaClient` nicht mehr implizit über die Engine, sondern nur noch über einen Adapter oder Prisma Accelerate |
-| 2026-08-26 | Passkeys: `@simplewebauthn/server` + `@simplewebauthn/browser` | Rückfrage bei Chris beantwortet — De-facto-Standard, keine Cloud-Abhängigkeit |
+| 2026-08-26 | ~~Passkeys: `@simplewebauthn`~~ — verworfen, siehe unten | Rückfrage bei Chris beantwortet — De-facto-Standard, keine Cloud-Abhängigkeit |
 | 2026-08-26 | Session: eigenes signiertes httpOnly-Cookie (Web Crypto API, kein extra Package) | Rückfrage bei Chris beantwortet — passt zu „2 Nutzer, keine Rollen"; Web Crypto statt `node:crypto`, damit dieselbe Signierlogik auch in der Edge-Middleware läuft |
 | 2026-08-26 | Web Push: `web-push` (npm) | einzige ernstzunehmende Option für VAPID-Push, keine Rückfrage nötig |
-| 2026-08-26 | `Passkey`-Modell zum Schema ergänzt (nicht in PLAN.md 3) | WebAuthn-Credentials brauchten eine Tabelle, die die ursprüngliche Spezifikation nicht vorsah |
 | 2026-08-26 | Zusteller als selbst nachplanende Schleife (`instrumentation.ts`), nicht `setInterval` + rohes `FOR UPDATE SKIP LOCKED` | Compose fährt genau einen `app`-Container — die einzige reale Race-Bedingung ist ein überlappender Lauf mit sich selbst, wenn Zustellung >60s dauert. Ein „warte auf Ende, dann Timeout" vermeidet das ohne offene Transaktion über Netzwerk-Calls hinweg |
+| 2026-08-26 | Docker Desktop lokal aufgegeben, natives PostgreSQL 17 für die Entwicklung | Rechner hat eine alte MBR-Platte, WSL2/Hyper-V-Virtualisierung startet nicht (dasselbe Problem blockiert auch das Win11-Upgrade). `docker-compose.yml` bleibt unverändert für NAS/Hetzner |
+| 2026-08-26 | Auth: **Nutzername/Passwort statt Passkeys** (`crypto.scrypt`, kein neues Package), für beide Geräte | Kurswechsel von Chris — Passkey-Registrierung ließ sich auf dem Entwicklungsrechner nicht testen (kein Authenticator eingerichtet); statt Workaround bewusst vereinfacht. `Passkey`-Modell wieder aus dem Schema entfernt, `User.name` jetzt `@unique` |
 
 ---
 
@@ -86,6 +104,7 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Auswertungen und Verläufe pro Topf
 - Wochenansicht mit Stundenraster
 - Play-Store-Veröffentlichung via Bubblewrap
+- PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 
 ---
 
@@ -94,26 +113,53 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
 
-### 2026-08-26 — Gerüst, Auth, Push (Code steht, DB-Test steht aus)
-Next.js 15 + Prisma 7 + Docker Compose (app/postgres/caddy) aufgesetzt.
-Schema aus PLAN.md 3 übernommen, `Passkey`-Modell ergänzt. Auth-Flow
-(Invite-Code-Setup für beide Personen, danach Passkey-Login über
-`@simplewebauthn`) und Push-Pipeline (Manifest, Service Worker,
-VAPID, `/api/push/subscribe`, Zusteller-Loop, Test-Button) fertig
-geschrieben, lintet und baut sauber (`npm run build`).
+### 2026-08-26 — Gerüst, Auth (Kurswechsel), Push-Code steht
+Next.js 15 + Prisma 7 + Docker Compose (app/postgres/caddy) aufgesetzt,
+Schema aus PLAN.md 3 übernommen. Push-Pipeline (Manifest, Service
+Worker, VAPID, `/api/push/subscribe`, Zusteller-Loop, Test-Button)
+fertig geschrieben, lintet und baut sauber (`npm run build`).
 
-Docker war auf der Maschine nicht installiert — mit Zustimmung von
-Chris per `winget` nachinstalliert. Der Engine-Start (WSL2-Backend,
-Willkommens-Dialog) zog sich über die Session; deshalb ist der Code
-noch **nicht gegen eine echte Postgres-Instanz getestet** — keine
-Migration gelaufen, kein Setup/Login/Push-Test durchgeklickt. Das ist
-der Blocker für „Nächster Schritt" oben.
+**Docker geht auf diesem Rechner nicht.** Erst per `winget`
+nachinstalliert, dann hing der Engine-Start (WSL2-Backend) fest —
+Ursache: alte MBR-Partitionierung, dieselbe, die auch das Win11-Upgrade
+blockiert. Statt Virtualisierung erzwingen: lokale Entwicklung läuft
+über natives PostgreSQL 17 für Windows (`winget install
+PostgreSQL.PostgreSQL.17`), NICHT als Windows-Dienst (das Dienstkonto
+hatte keine Start/Stop-Rechte in dieser Session — `pg_ctl start`
+manuell, siehe „Lokale DB neu starten" oben). `docker-compose.yml`
+bleibt unverändert für den späteren Betrieb auf NAS/Hetzner, wo
+Virtualisierung kein Thema ist.
 
-Kleinere Stolperstellen für die nächste Instanz: der Next-Standalone-
-Build wirft unter Windows lokal eine harmlose Warnung beim Kopieren
-von `node:buffer`-Chunks (Doppelpunkt im Dateinamen, Windows-FS-
-Limitierung) — im Docker-Image (Linux) tritt das nicht auf, keine
-Aktion nötig.
+Auf dem Weg dahin zuerst `npx prisma dev` probiert (Prismas
+eingebauter lokaler Postgres) — funktionierte anfangs, verhielt sich
+dann aber nicht wie echtes Postgres (`template1` „heilte" sich
+zwischen Verbindungen selbst, vermutlich eine Embedded/Snapshot-
+Variante). Nach mehreren rätselhaften Migrationsfehlern verworfen
+zugunsten von echtem PostgreSQL.
+
+**Auth-Kurswechsel:** Passkey-Registrierung ließ sich auf diesem
+Rechner nicht testen (kein Authenticator eingerichtet). Auf
+ausdrücklichen Wunsch von Chris komplett auf Nutzername/Passwort
+umgestellt — nicht nur als Notlösung für den PC, sondern dauerhaft für
+beide Geräte. `@simplewebauthn` wieder entfernt, `Passkey`-Modell raus,
+`User.passwordHash` (`crypto.scrypt`) rein.
+
+Ende-zu-Ende gegen die echte lokale DB getestet (curl): Setup Person 1
++ 2, Setup schließt sich danach, dritte Registrierung abgelehnt,
+falsches Passwort abgelehnt, korrekter Login setzt Session, geschützte
+Seite lädt mit Nutzernamen. Middleware gab unauthentifizierte
+API-Aufrufe fälschlich als Redirect statt 401 zurück — gefixt.
+Test-Accounts danach gelöscht, DB ist für Chris/Mara bereit.
+
+**Noch nicht getestet:** der eigentliche Push-Teil im Browser
+(Service-Worker-Registrierung, Benachrichtigungs-Erlaubnis, ob die
+Test-Benachrichtigung nach 2 Minuten wirklich ankommt) — das ist der
+nächste Schritt.
+
+Kleinere Stolperstelle: der Next-Standalone-Build wirft unter Windows
+lokal eine harmlose Warnung beim Kopieren von `node:buffer`-Chunks
+(Doppelpunkt im Dateinamen, Windows-FS-Limitierung) — im Docker-Image
+(Linux) tritt das nicht auf, keine Aktion nötig.
 
 ### 2026-08-26 — Umbenennung & Repo-Bootstrap
 App von "Zwirn" auf **"Bothy"** umbenannt (englisch statt deutsch,
