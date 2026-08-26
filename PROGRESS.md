@@ -1,9 +1,10 @@
 # PROGRESS.md
 
-**Stand:** Stufe 0 — Gerüst, Auth (Nutzername/Passwort) und Push-Pipeline
-stehen und sind **im Desktop-Browser Ende-zu-Ende bewiesen**: Setup,
-Login, „Push aktivieren", Test-Benachrichtigung kam nach 2 Minuten an.
-Offen ist nur noch der eigentliche DoD auf echten Handys.
+**Stand:** Stufe 0 (Gerüst, Auth, Push) im Desktop-Browser Ende-zu-Ende
+bewiesen, der Drei-Tage-Handy-DoD ist bewusst zurückgestellt (Chris'
+Entscheidung — erst weiter an der App, Rollout auf die Handys später).
+Stufe 1 — Töpfe ist jetzt gebaut und gegen die echte DB getestet
+(noch nicht im Browser).
 **Letzte Aktualisierung:** 2026-08-26
 **Branch:** `dev`
 
@@ -11,15 +12,16 @@ Offen ist nur noch der eigentliche DoD auf echten Handys.
 
 ## Nächster Schritt
 
-Der lokale Beweis auf dem Desktop steht. Für den echten DoD aus
-PLAN.md 5 (beide Handys, App geschlossen, 30 min Standby, drei Tage
-in Folge) müssen die Handys die App erreichen können — das braucht
-einen secure context (siehe PLAN.md 6: `192.168.x.x` reicht nicht für
-Service Worker). Das hängt an der noch offenen Hosting-Entscheidung
-(NAS+Tailscale oder Hetzner, siehe „Offene Fragen"). Vorschlag für
-die nächste Session: Tailscale zwischen diesem Rechner (oder dem NAS)
-und beiden Handys einrichten, `tailscale cert` für ein gültiges
-Zertifikat, dann den Drei-Tage-Test starten.
+Töpfe im Browser durchklicken: `/toepfe` — Topf anlegen, Buchung
+erfassen (Quick-Add direkt in der Liste), Umbuchen, bei einem
+Sparziel-Topf den Fortschrittsbalken/die Monatsrate prüfen,
+Monatsstart einmal durchlaufen lassen. Bisher nur per curl getestet.
+
+Danach offen: der Stufe-0-DoD auf echten Handys steht noch aus (siehe
+„Offene Fragen" — Tailscale-Login war schon gestartet, dann auf
+Chris' Wunsch zurückgestellt zugunsten von Feature-Arbeit). Login-URL
+war `https://login.tailscale.com/a/e11d2c9015be0` — vermutlich
+abgelaufen, bei Bedarf `tailscale up` neu ausführen.
 
 **Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
 Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
@@ -49,8 +51,11 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Auth: Invite-Code beim Setup, dann Login — **Nutzername/Passwort statt Passkeys** (Entscheidung geändert, siehe unten), Ende-zu-Ende getestet
   - [x] PWA-Manifest, Service Worker, VAPID-Keys, Subscription-Handling — im Desktop-Browser (Chrome) getestet, funktioniert
   - [x] Button „Test-Benachrichtigung in 2 Minuten" — getestet, Zustellung nach 2 Minuten bestätigt
-  - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge — braucht erreichbare Domain/Tailscale (siehe „Nächster Schritt")
-- [ ] **Stufe 1 — Töpfe**
+  - [ ] **DoD:** zuverlässige Zustellung auf beiden Handys, App geschlossen, nach 30 min Standby, an drei Tagen in Folge — bewusst zurückgestellt, siehe „Nächster Schritt"
+- [x] **Stufe 1 — Töpfe** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+  - [x] Töpfe anlegen/archivieren, Buchungen erfassen, Umbuchen, Fortschrittsbalken bei Sparzielen, Monatsstart-Aktion
+  - [x] Liste pollt alle 10s (DoD: Änderung binnen 30s sichtbar) — noch nicht mit zwei gleichzeitigen Sessions getestet
+  - [ ] **DoD:** siehe `PLAN.md` 5, noch nicht im Browser/auf zwei Geräten verifiziert
 - [ ] **Stufe 2 — Kalender**
 - [ ] **Stufe 3 — Essensplan & Einkaufsliste**
 
@@ -113,6 +118,42 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-26 (Fortsetzung) — Stufe 1: Töpfe
+Auf Wunsch von Chris den Drei-Tage-Handy-DoD zurückgestellt (Tailscale-
+Login war schon gestartet, siehe „Nächster Schritt") und stattdessen
+mit Stufe 1 weitergemacht: Töpfe anlegen/archivieren, Buchungen
+erfassen (Quick-Add direkt in der Topf-Liste), Umbuchen (zwei
+Buchungen, gemeinsame `transferId`), Fortschrittsbalken + nötige
+Monatsrate bei Sparzielen, Monatsstart-Aktion. Liste pollt alle 10s.
+
+„Übliche Beträge" für Monatsstart sind nirgends in PLAN.md 3
+spezifiziert (kein `Regel`-Modell, bewusst laut 4.2) — als Konvention
+implementiert: Vorschlag ist der zuletzt gebuchte Betrag einer
+`Buchung` mit `notiz: "Monatsstart"` im selben Topf. Kein Schema
+nötig, keine Rückfrage, da reine Implementierungsentscheidung.
+
+Zwei eigene Bugs gefunden und gefixt, bevor Chris testen musste:
+(1) Ein Client Component importierte versehentlich aus dem
+Prisma-nutzenden `lib/toepfe.ts`, zog dadurch `pg`/`tls`/`net` in den
+Browser-Bundle und ließ den Build scheitern — reine Funktionen nach
+`lib/toepfe-shared.ts` ausgelagert (keine Server-Importe, darf von
+Client Components importiert werden). (2) Die Buchungen-API gab über
+`include: { vonUser: true }` den kompletten User inklusive
+`passwordHash` zurück — auf `select: { id, name }` eingeschränkt.
+
+**Stolperfalle für die nächste Instanz:** `npm run build` und
+`npm run dev` dürfen nicht gleichzeitig auf denselben `.next`-Ordner
+zugreifen — sonst korrumpiert der Build den laufenden Dev-Server
+(ENOENT auf `_buildManifest.js.tmp.*`, Seite lädt bei Chris nicht
+mehr). Ist in dieser Session zweimal passiert. Vor jedem
+`npm run build`-Testlauf den Dev-Server stoppen, danach `.next`
+löschen und den Dev-Server sauber neu starten.
+
+Gegen die echte lokale DB getestet (curl, danach Testdaten gelöscht):
+Topf anlegen, Buchung, Umbuchung (Summe über beide Töpfe bleibt
+korrekt), Monatsstart-Vorschlag greift den letzten Betrag auf. Noch
+**nicht** im Browser durchgeklickt — das ist der nächste Schritt.
 
 ### 2026-08-26 — Gerüst, Auth (Kurswechsel), Push-Code steht
 Next.js 15 + Prisma 7 + Docker Compose (app/postgres/caddy) aufgesetzt,
