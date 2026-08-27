@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatCent, parseEuroToCent } from "@/lib/money";
+import { IconRestart } from "../icons";
 
 type Item = { id: string; text: string; abgehakt: boolean; sortierung: number };
 type Liste = { id: string; woche: Date | string; items: Item[] } | null;
@@ -70,7 +71,10 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
       const res = await fetch("/api/einkaufsliste/generieren", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ woche }),
+        // force: true — sonst liefert die Route bei bereits bestehender Liste
+        // einfach die alte Liste unverändert zurück (siehe route.ts). Diese
+        // Aktion soll immer wirklich neu aus dem aktuellen Essensplan bauen.
+        body: JSON.stringify({ woche, force: true }),
       });
       setListe(await res.json());
     } finally {
@@ -110,9 +114,6 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
     );
   }
 
-  const offen = liste.items.filter((i) => !i.abgehakt);
-  const erledigt = liste.items.filter((i) => i.abgehakt);
-
   return (
     <div className="flex flex-col gap-6">
       {offline && (
@@ -125,18 +126,18 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
         <p className="card text-center text-sm text-muted">Keine Zutaten geplant.</p>
       ) : (
         <ul className="card flex flex-col divide-y divide-border !p-0">
-          {offen.map((item) => (
-            <ItemRow key={item.id} item={item} onToggle={toggle} />
-          ))}
-          {erledigt.map((item) => (
+          {liste.items.map((item) => (
             <ItemRow key={item.id} item={item} onToggle={toggle} />
           ))}
         </ul>
       )}
 
-      <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-ghost -ml-3 self-start">
-        Neu aus Essensplan erzeugen (überschreibt Häkchen)
-      </button>
+      <div className="flex flex-col items-start gap-1.5">
+        <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-secondary">
+          <IconRestart className="h-4 w-4" /> {erzeugeBusy ? "…" : "Neu aus Essensplan erzeugen"}
+        </button>
+        <p className="text-xs text-muted">Baut die Liste komplett neu — bestehende Häkchen gehen dabei verloren.</p>
+      </div>
 
       {toepfe.length > 0 && <EinkaufBuchen listeId={liste.id} toepfe={toepfe} />}
     </div>
