@@ -20,6 +20,7 @@ model User {
   buchungen     Buchung[]
   subscriptions PushSubscription[]
   jobs          ReminderJob[]
+  todoJobs      TodoReminderJob[]
 }
 
 model PushSubscription {
@@ -133,6 +134,63 @@ model ReminderJob {
   fehler   String?
 
   @@unique([terminId, userId, dueAt])
+  @@index([dueAt, sentAt])
+}
+
+// ---------- Todo-Liste ----------
+// Kein Schema in PLAN.md 3 ursprünglich vorgegeben (später ergänzt,
+// siehe PLAN.md 4.4). Bewusst keine Wiederholung (deckt der Kalender
+// schon ab) und keine freie Farbwahl (feste Farbe je Prioritätsstufe).
+
+enum TodoPrioritaet {
+  NIEDRIG
+  NORMAL
+  HOCH
+}
+
+model Todo {
+  id           String            @id @default(cuid())
+  text         String
+  prioritaet   TodoPrioritaet    @default(NORMAL)
+  erledigt     Boolean           @default(false)
+  faelligkeit  DateTime?         @db.Date // optional, ganztägig gedacht — keine Uhrzeit
+  betrifft     Betrifft          @default(BEIDE)
+  erinnerungen TodoErinnerung[]
+  jobs         TodoReminderJob[]
+  sortierung   Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([faelligkeit])
+}
+
+model TodoErinnerung {
+  id            String @id @default(cuid())
+  todoId        String
+  todo          Todo   @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  minutenVorher Int // 0 | 1440 | 2880 | 4320 | 10080 — nur Tagesbasis, Todos haben keine Uhrzeit
+}
+
+// Eigene, zu ReminderJob praktisch identische Tabelle statt eines
+// generischen ReminderJob mit optionalem terminId/todoId: Postgres
+// behandelt NULL in einem Unique-Constraint als nie gleich, auch bei
+// sonst identischen Werten — zwei Termin-Jobs mit todoId = NULL wären
+// vom Unique-Index dann nicht mehr als Duplikat erkannt. Das hätte die
+// Idempotenz des Materialisierers gebrochen (PLAN.md 4.1: "darf
+// beliebig oft laufen"). Zwei einfache Tabellen sind hier robuster als
+// ein cleverer generischer Ansatz.
+model TodoReminderJob {
+  id       String    @id @default(cuid())
+  todoId   String
+  todo     Todo      @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueAt    DateTime
+  sentAt   DateTime?
+  versuche Int       @default(0)
+  fehler   String?
+
+  @@unique([todoId, userId, dueAt])
   @@index([dueAt, sentAt])
 }
 

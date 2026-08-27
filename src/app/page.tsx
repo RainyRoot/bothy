@@ -9,7 +9,7 @@ import { formatBerlinDatum } from "@/lib/timezone";
 import { BottomNav } from "./BottomNav";
 import { LogoutButton } from "./LogoutButton";
 import { PushSetup } from "./PushSetup";
-import { IconHome, IconJar, IconCalendar, IconUtensils, IconCart, type IconComponent } from "./icons";
+import { IconHome, IconJar, IconCalendar, IconUtensils, IconCart, IconChecklist, type IconComponent } from "./icons";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +24,10 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const [toepfe, naechsteTermine] = await Promise.all([
+  const [toepfe, naechsteTermine, offeneTodos] = await Promise.all([
     getToepfeMitStand(),
     getEreignisse(new Date(), new Date(Date.now() + 30 * 86_400_000)),
+    prisma.todo.count({ where: { erledigt: false } }),
   ]);
 
   const gesamtCent = toepfe.reduce((summe, t) => summe + t.standCent, 0);
@@ -35,6 +36,7 @@ export default async function Home() {
   const kalenderHint = naechsterTermin
     ? `${naechsterTermin.titel} · ${formatBerlinDatum(naechsterTermin.datum)}`
     : "Nichts Anstehendes";
+  const todosHint = offeneTodos === 0 ? "Alles erledigt" : `${offeneTodos} offen`;
 
   const heuteLabel = new Intl.DateTimeFormat("de-DE", {
     weekday: "long",
@@ -59,6 +61,7 @@ export default async function Home() {
           <HomeTile href="/kalender" icon={IconCalendar} label="Kalender" hint={kalenderHint} />
           <HomeTile href="/essensplan" icon={IconUtensils} label="Essensplan" hint="Wochenplan" />
           <HomeTile href="/einkaufsliste" icon={IconCart} label="Einkaufsliste" hint="Zum Einkauf" />
+          <HomeTile href="/todos" icon={IconChecklist} label="Todos" hint={todosHint} span />
         </div>
 
         <div className="card flex flex-col items-center gap-3 text-center">
@@ -79,14 +82,19 @@ function HomeTile({
   icon: Icon,
   label,
   hint,
+  span,
 }: {
   href: string;
   icon: IconComponent;
   label: string;
   hint: string;
+  span?: boolean;
 }) {
   return (
-    <Link href={href} className="card flex flex-col gap-3 transition-transform duration-150 active:scale-[0.98]">
+    <Link
+      href={href}
+      className={`card flex flex-col gap-3 transition-transform duration-150 active:scale-[0.98] ${span ? "col-span-2" : ""}`}
+    >
       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-accent">
         <Icon className="h-5 w-5" />
       </span>

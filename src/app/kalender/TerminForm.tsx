@@ -8,6 +8,8 @@ const ERINNERUNGS_OPTIONEN: { minuten: number; label: string }[] = [
   { minuten: 15, label: "15 Minuten vorher" },
   { minuten: 60, label: "1 Stunde vorher" },
   { minuten: 1440, label: "1 Tag vorher" },
+  { minuten: 2880, label: "2 Tage vorher" },
+  { minuten: 4320, label: "3 Tage vorher" },
   { minuten: 10080, label: "1 Woche vorher" },
 ];
 

@@ -1,17 +1,17 @@
 # PROGRESS.md
 
-**Stand:** Die ersten vier Stufen aus `PLAN.md` sind code-komplett und
-alle im Browser getestet (Gerüst/Auth/Push, Töpfe, Kalender,
-Essensplan) — inklusive Offline-Queue der Einkaufsliste und echter
-Zustellung einer Kalender-Erinnerung als Push. Dazu ein durchgängiges
-visuelles Design (warme Terracotta-Palette statt Test-Pink, Icons,
-Bottom-Nav) und ein Bugfix in der Einkaufsliste (Neu-erzeugen
-aktualisierte bisher nicht) — beides code-fertig, von Chris im Browser
-gegengecheckt. Neu dazugekommen: **Stufe 4 — Todo-Liste** ist jetzt in
-`PLAN.md` spezifiziert (Schema, Mechanik, DoD), aber noch nicht
-gebaut. Sonst offen: was echte Geräte/Zeit braucht (Drei-Tage-Handy-DoD
-aus Stufe 0, Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1), dazu
-Docker Compose (auf diesem Rechner nicht testbar).
+**Stand:** Alle fünf Stufen aus `PLAN.md` (Gerüst/Auth/Push, Töpfe,
+Kalender, Essensplan, **jetzt auch Todo-Liste**) sind code-komplett.
+Vier davon im Browser getestet — inklusive Offline-Queue der
+Einkaufsliste und echter Zustellung einer Kalender-Erinnerung als
+Push. Dazu ein durchgängiges visuelles Design (warme
+Terracotta-Palette statt Test-Pink, Icons, Bottom-Nav) und ein Bugfix
+in der Einkaufsliste (Neu-erzeugen aktualisierte bisher nicht) —
+beides code-fertig, von Chris im Browser gegengecheckt. **Stufe 4 —
+Todo-Liste** ist neu dazugekommen und nur per curl getestet, noch
+nicht im Browser. Sonst offen: was echte Geräte/Zeit braucht
+(Drei-Tage-Handy-DoD aus Stufe 0, Zwei-Geräte-Gleichzeitigkeitstest aus
+Stufe 1), dazu Docker Compose (auf diesem Rechner nicht testbar).
 **Letzte Aktualisierung:** 2026-08-27
 **Branch:** `dev`
 
@@ -19,11 +19,11 @@ Docker Compose (auf diesem Rechner nicht testbar).
 
 ## Nächster Schritt
 
-1. **Stufe 4 — Todo-Liste bauen** (Spec steht in `PLAN.md` 3/4.4/5):
-   Migration (`Todo`, `TodoErinnerung`, `ReminderJob` generisch für
-   Termin/Todo), `/todos`-Seite, Bottom-Nav-Eintrag, Materialisierer/
-   Zusteller erweitern, Vorlaufzeiten-Liste bei Terminen um 2/3 Tage
-   ergänzen.
+1. **Stufe 4 — Todo-Liste im Browser anschauen** (Chris): `/todos`
+   durchklicken, Quick-Add, „mehr"-Ausklapper (Priorität/Fälligkeit/
+   Erinnerung/Zuweisung), Abhaken, Löschen. Die Erinnerungs-Pipeline
+   ist bereits per curl UND mit einer echten Push-Zustellung bestätigt
+   (siehe Session-Log) — hier geht's nur noch um die Bedienung selbst.
 2. Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" von früher —
    Tailscale-Login war schon gestartet, dann auf Chris' Wunsch
    zurückgestellt; jetzt akut, da Hosting auf NAS+Tailscale entschieden
@@ -84,11 +84,13 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Häkchen laufen optimistisch mit localStorage-Queue + Sync bei `online`-Event (bewusst kein natives Background Sync, siehe Entscheidungen)
   - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe
   - [x] Im Browser getestet, inklusive Offline-Queue in einem echten Browser-Offline-Zustand (Chris bestätigt, 2026-08-27)
-- [ ] **Stufe 4 — Todo-Liste** (Spec in `PLAN.md` 3/4.4/5 steht, noch nicht gebaut)
-  - [ ] Schema (`Todo`, `TodoErinnerung`, `ReminderJob` generisch für Termin/Todo) + Migration
-  - [ ] `/todos`-Seite, Bottom-Nav um sechsten Eintrag erweitern
-  - [ ] Materialisierer/Zusteller um Todo-Erinnerungen erweitern (dieselbe Queue wie Kalender, siehe PLAN.md 4.4)
-  - [ ] Vorlaufzeiten-Liste bei Terminen um 2/3 Tage erweitern (PLAN.md 4.4)
+- [x] **Stufe 4 — Todo-Liste** (gebaut, per curl gegen die echte DB getestet, noch nicht im Browser)
+  - [x] Schema (`Todo`, `TodoErinnerung`, `TodoReminderJob`) + Migration `20260827130009_stufe4_todo_liste`
+  - [x] `/todos`-Seite (Quick-Add + „mehr"-Ausklapper für Priorität/Fälligkeit/Erinnerung/Zuweisung), Bottom-Nav um sechsten Eintrag erweitert, Home-Kachel mit „X offen"
+  - [x] Materialisierer/Zusteller um Todo-Erinnerungen erweitert (eigene Queue, `TodoReminderJob`, siehe PLAN.md 4.4)
+  - [x] Vorlaufzeiten-Liste bei Terminen um 2/3 Tage erweitert (PLAN.md 4.4)
+  - [x] **Per curl verifiziert:** Todo mit Fälligkeit morgen + zwei Erinnerungen (0/1440 Min) erzeugt korrekt zwei `TodoReminderJob`-Zeilen nur für die zugewiesene Person; einer davon war sofort fällig und wurde **tatsächlich als Push zugestellt** (unbeabsichtigt beim Testen, siehe Session-Log) — echte Zustellung damit bereits bestätigt, nicht nur die Pipeline bis zur DB. `erledigt=true` löscht offene Jobs korrekt, Löschen kaskadiert `TodoErinnerung`+`TodoReminderJob` sauber weg
+  - [ ] Noch nicht im Browser angeschaut, keine Bearbeiten-Seite für bestehende Todos (bewusst weggelassen für v1 — löschen+neu anlegen reicht fürs Erste, siehe Backlog)
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -124,7 +126,8 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | Offline-Sync der Einkaufsliste über localStorage-Queue + `online`-Event, nicht die native Background-Sync-API | Echtes Background Sync bräuchte IndexedDB-Zugriff aus dem Service Worker (kein `localStorage` dort verfügbar) — für zwei Nutzer und eine Liste mit wenigen Einträgen reicht die einfachere Variante, die nur bei offener App synct statt auch bei geschlossenem Tab |
 | 2026-08-27 | Hosting jetzt: **NAS + Tailscale**; Hetzner-Umzug bleibt der spätere Weg, falls Play Store gewünscht | Play Store lohnt laut PLAN.md 8 für zwei Nutzer ohnehin nicht ("falscher Aufwand"), Sideload reicht. `docker-compose.yml` ist bewusst anbieterunabhängig gehalten — Umzug auf Hetzner ist dann nur `docker compose up` + DNS, kein Code-Unterschied. Domain-Entscheidung bleibt aufgeschoben, bis Play Store konkret ansteht (PLAN.md 8: Domain muss vor TWA-Verifizierung feststehen und bleibt dann fest) |
 | 2026-08-27 | Visuelles Design: warme Terracotta/Papier-Palette ("Bothy"-Hütte, Laternenlicht), Line-Icons, Bottom-Nav | Chris: "entscheide einfach du" — freie Gestaltung, danach Feinjustierung. Ersetzt das Test-Pink `#ff1dce` aus Commit 1bd700a, das laut dessen Commit-Message explizit kein finales Farbschema war |
-| 2026-08-27 | Neue **Stufe 4 — Todo-Liste** in PLAN.md aufgenommen (Priorität als feste Farbstufen, Erinnerungen wie Kalender aber nur tagesbasiert, keine Wiederholung, `betrifft`-Zuweisung wie Termine) | Chris' Wunsch; explizit als neue Stufe statt Backlog, da mit eigenem Schema/Erinnerungs-Pipeline vom Umfang vergleichbar mit Stufe 3. `ReminderJob` dabei generisch gemacht (`terminId`/`todoId` beide optional) statt einer zweiten Tabelle — eine Zusteller-Queue bleibt bestehen, gleiches Muster wie `Buchung.transferId` |
+| 2026-08-27 | Neue **Stufe 4 — Todo-Liste** in PLAN.md aufgenommen (Priorität als feste Farbstufen, Erinnerungen wie Kalender aber nur tagesbasiert, keine Wiederholung, `betrifft`-Zuweisung wie Termine) | Chris' Wunsch; explizit als neue Stufe statt Backlog, da mit eigenem Schema/Erinnerungs-Pipeline vom Umfang vergleichbar mit Stufe 3 |
+| 2026-08-27 | Todo-Erinnerungen über eigene `TodoReminderJob`-Tabelle, nicht ein generisches `ReminderJob` mit optionalem `terminId`/`todoId` | Korrektur eines eigenen Fehlers, noch vor dem Bauen bemerkt: Postgres behandelt `NULL` in einem Unique-Constraint als nie gleich — zwei Termin-Jobs mit `todoId = NULL` wären vom Unique-Index nicht mehr als Duplikat erkannt, das hätte die Idempotenz des Materialisierers gebrochen (PLAN.md 4.1). Zwei einfache Tabellen sind hier robuster als ein cleverer generischer Ansatz |
 | 2026-08-27 | Vorlaufzeiten für Erinnerungen um 2 und 3 Tage vorher erweitert (Termine *und* Todos) | Chris' Wunsch, im Zuge der Todo-Liste-Spec gleich für beide Features mit erledigt |
 
 ---
@@ -149,6 +152,7 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 - Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
+- Todo bearbeiten (bestehenden Eintrag ändern statt löschen+neu anlegen) — für v1 bewusst weggelassen
 
 ---
 
@@ -156,6 +160,48 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-27 (Fortsetzung 3) — Todo-Liste gebaut (Stufe 4)
+Direkt im Anschluss an die Spec gebaut, Chris wollte nicht erst eine
+neue Session abwarten.
+
+Vor dem Bauen ein eigener Spec-Fehler bemerkt und korrigiert: die
+geplante generische `ReminderJob`-Tabelle (`terminId`/`todoId` beide
+optional) hätte die Idempotenz des Materialisierers gebrochen, weil
+Postgres `NULL` in einem Unique-Constraint nie als gleich behandelt —
+zwei Termin-Jobs mit `todoId = NULL` wären nicht mehr als Duplikat
+erkannt worden. Stattdessen eine eigene `TodoReminderJob`-Tabelle
+(strukturell identisch zu `ReminderJob`), der Zusteller bedient jetzt
+beide Warteschlangen. `getPartnerUserIds`/`userIdsFuerBetrifft` dabei
+aus `reminder-materialize.ts` nach `lib/partner.ts` ausgelagert, damit
+der Todo-Materialisierer sie mitnutzen kann, ohne zu duplizieren.
+
+Migration `20260827130009_stufe4_todo_liste` gegen die echte lokale DB
+gelaufen (`Todo`, `TodoErinnerung`, `TodoReminderJob`, `User.todoJobs`).
+`/todos`-Seite: Quick-Add-Zeile immer sichtbar, „mehr"-Ausklapper für
+Priorität (drei feste Farbchips)/Fälligkeit/Erinnerung/Zuweisung —
+bewusst wie bei den Töpfen kollabiert, damit ein einfaches Todo in
+einem Tap steht. Bottom-Nav auf sechs Einträge erweitert, Home-Seite
+bekam eine fünfte, volle Kachel mit „X offen"-Hinweis.
+
+**Beim Testen (curl) unbeabsichtigt eine echte Push-Benachrichtigung
+ausgelöst:** Test-Todo mit Fälligkeit morgen und Erinnerung „1 Tag
+vorher" angelegt — das ergab einen sofort fälligen `dueAt` (da es
+schon nachmittags war), der Zusteller hat ihn binnen Sekunden
+tatsächlich zugestellt, bevor die Instanz den Job per `erledigt=true`
+canceln konnte. Kein Schaden, aber falls eine „Todo: Test-Todo"-Push
+aufgetaucht ist — daher, nicht von einem echten Todo. Ungeplanter,
+aber vollständiger Beweis, dass die Erinnerungs-Pipeline bis zur
+echten Zustellung funktioniert (nicht nur bis zur DB-Zeile).
+
+Sonst per curl verifiziert: `betrifft=PARTNER_A` erzeugt Jobs nur für
+eine Person, `erledigt=true` löscht offene Jobs, Löschen kaskadiert
+`TodoErinnerung`+`TodoReminderJob` sauber weg, `tsc`/`eslint` sauber.
+Testdaten danach gelöscht. Bewusst weggelassen für v1: eine
+Bearbeiten-Seite für bestehende Todos (Backlog) — Priorität/Fälligkeit/
+Erinnerung/Zuweisung lassen sich nur beim Anlegen setzen.
+
+**Noch nicht im Browser angeschaut.**
 
 ### 2026-08-27 (Fortsetzung 2) — Todo-Liste spezifiziert (Stufe 4)
 Chris wollte eine Todo-Liste ("Reiter") mit Priorisierung und

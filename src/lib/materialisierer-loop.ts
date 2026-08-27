@@ -1,4 +1,5 @@
 import { materialisiereAlle } from "@/lib/reminder-materialize";
+import { materialisiereAlleTodos } from "@/lib/todo-materialize";
 
 let started = false;
 
@@ -22,6 +23,11 @@ async function laufen() {
     await materialisiereAlle();
   } catch (err) {
     console.error("Materialisierer-Fehler:", err);
+  }
+  try {
+    await materialisiereAlleTodos();
+  } catch (err) {
+    console.error("Todo-Materialisierer-Fehler:", err);
   }
 }
 

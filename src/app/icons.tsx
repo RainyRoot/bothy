@@ -123,6 +123,20 @@ export function IconRestart({ className }: IconProps) {
   );
 }
 
+// Todo-Liste — eine Checkliste.
+export function IconChecklist({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <path d="m4 6 1.5 1.5L8 5" />
+      <path d="M11 6h9" />
+      <path d="m4 12 1.5 1.5L8 11" />
+      <path d="M11 12h9" />
+      <path d="m4 18 1.5 1.5L8 17" />
+      <path d="M11 18h9" />
+    </svg>
+  );
+}
+
 export function IconBell({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} {...base}>

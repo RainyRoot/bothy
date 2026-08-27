@@ -21,6 +21,11 @@
   --danger: #c1443a;
   --danger-soft: #f8e1de;
   --success: #3f7d4e;
+
+  /* Todo-Prioritätsstufen — feste Farben statt freier Farbwahl (siehe PLAN.md 4.4) */
+  --prio-niedrig: #6b8cae;
+  --prio-normal: #c9982f;
+  --prio-hoch: var(--danger);
 }
 
 @theme inline {
@@ -61,6 +66,10 @@
     --danger: #e2685b;
     --danger-soft: #3b241f;
     --success: #7fbb8b;
+
+    --prio-niedrig: #8fb0d1;
+    --prio-normal: #e0b354;
+    --prio-hoch: var(--danger);
   }
 }
 

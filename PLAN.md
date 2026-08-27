@@ -163,16 +163,10 @@ model TerminAusnahme {
   @@unique([terminId, datum])
 }
 
-// terminId/todoId: genau eines von beiden ist gesetzt, nie beide, nie
-// keines — von den Materialisierern garantiert, nicht per DB-Constraint
-// (gleiches Muster wie Buchung.transferId: eine Tabelle statt zwei fast
-// identischer, damit der Zusteller nur eine Queue abarbeitet).
 model ReminderJob {
   id       String    @id @default(cuid())
-  terminId String?
-  termin   Termin?   @relation(fields: [terminId], references: [id], onDelete: Cascade)
-  todoId   String?
-  todo     Todo?     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  terminId String
+  termin   Termin    @relation(fields: [terminId], references: [id], onDelete: Cascade)
   userId   String
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   dueAt    DateTime
@@ -180,7 +174,7 @@ model ReminderJob {
   versuche Int       @default(0)
   fehler   String?
 
-  @@unique([terminId, todoId, userId, dueAt])
+  @@unique([terminId, userId, dueAt])
   @@index([dueAt, sentAt])
 }
 
@@ -193,17 +187,17 @@ enum TodoPrioritaet {
 }
 
 model Todo {
-  id           String           @id @default(cuid())
+  id           String            @id @default(cuid())
   text         String
-  prioritaet   TodoPrioritaet   @default(NORMAL) // feste Farbe je Stufe, keine Frei-Farbwahl
-  erledigt     Boolean          @default(false)
-  faelligkeit  DateTime?        @db.Date         // optional, ganztägig gedacht — keine Uhrzeit
-  betrifft     Betrifft         @default(BEIDE)  // gleiche Konvention wie bei Termin
+  prioritaet   TodoPrioritaet    @default(NORMAL) // feste Farbe je Stufe, keine Frei-Farbwahl
+  erledigt     Boolean           @default(false)
+  faelligkeit  DateTime?         @db.Date         // optional, ganztägig gedacht — keine Uhrzeit
+  betrifft     Betrifft          @default(BEIDE)  // gleiche Konvention wie bei Termin
   erinnerungen TodoErinnerung[]
-  jobs         ReminderJob[]
-  sortierung   Int              @default(0)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  jobs         TodoReminderJob[]
+  sortierung   Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
   @@index([faelligkeit])
 }
@@ -213,6 +207,30 @@ model TodoErinnerung {
   todoId        String
   todo          Todo   @relation(fields: [todoId], references: [id], onDelete: Cascade)
   minutenVorher Int    // 0 | 1440 | 2880 | 4320 | 10080 — nur Tagesbasis, Todos haben keine Uhrzeit
+}
+
+// Eigene, zu ReminderJob praktisch identische Tabelle statt eines
+// generischen ReminderJob mit optionalem terminId/todoId: Postgres
+// behandelt NULL in einem Unique-Constraint als nie gleich, auch bei
+// sonst identischen Werten — zwei Termin-Jobs mit todoId = NULL wären
+// vom Unique-Index dann nicht mehr als Duplikat erkannt. Das hätte die
+// Idempotenz des Materialisierers gebrochen (4.1: "darf beliebig oft
+// laufen"). Zwei einfache Tabellen mit je eigenem, sauberem
+// Unique-Constraint sind hier robuster als ein cleverer generischer
+// Ansatz — der Zusteller bedient beide Warteschlangen.
+model TodoReminderJob {
+  id       String    @id @default(cuid())
+  todoId   String
+  todo     Todo      @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dueAt    DateTime
+  sentAt   DateTime?
+  versuche Int       @default(0)
+  fehler   String?
+
+  @@unique([todoId, userId, dueAt])
+  @@index([dueAt, sentAt])
 }
 ```
 
@@ -309,10 +327,11 @@ Todo ist ein einmaliger Eintrag: Text, Priorität (`NIEDRIG`/`NORMAL`/
 `HOCH`, feste Farbe je Stufe statt freier Farbwahl), optionales
 Fälligkeitsdatum, `betrifft` wie bei Terminen.
 
-**Erinnerungen laufen über dasselbe `ReminderJob` wie der Kalender**
-(siehe 4.1) — `ReminderJob.terminId`/`.todoId` sind jetzt beide
-optional, genau eines ist gesetzt. Der Zusteller bleibt eine einzige
-Queue. Weil ein Todo weder Serie noch Uhrzeit hat, ist seine
+**Erinnerungen laufen über eine eigene `TodoReminderJob`-Tabelle**,
+strukturell identisch zu `ReminderJob` (siehe 4.1 und den Kommentar
+bei `TodoReminderJob` in Abschnitt 3 für die Begründung, warum keine
+gemeinsame generische Tabelle). Der Zusteller bedient beide
+Warteschlangen. Weil ein Todo weder Serie noch Uhrzeit hat, ist seine
 Materialisierung trivial gegenüber `expandiereTermin`: keine
 Wiederholung zu expandieren, nur `dueAt = faelligkeit − minutenVorher`
 je gewählter Erinnerung und je betroffenem Nutzer — läuft im selben
