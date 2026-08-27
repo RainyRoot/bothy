@@ -1,14 +1,17 @@
 # PROGRESS.md
 
-**Stand:** Alle vier Stufen aus `PLAN.md` sind code-komplett und alle
-im Browser getestet (Gerüst/Auth/Push, Töpfe, Kalender, Essensplan) —
-inklusive Offline-Queue der Einkaufsliste und echter Zustellung einer
-Kalender-Erinnerung als Push. Dazu ein durchgängiges visuelles Design
-(warme Terracotta-Palette statt Test-Pink, Icons, Bottom-Nav) —
-code-fertig, **noch nicht von Chris im Browser angeschaut**. Offen ist
-sonst nur noch, was echte Geräte/Zeit braucht: der Drei-Tage-Handy-DoD
-aus Stufe 0 und der Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1,
-dazu Docker Compose (auf diesem Rechner nicht testbar).
+**Stand:** Die ersten vier Stufen aus `PLAN.md` sind code-komplett und
+alle im Browser getestet (Gerüst/Auth/Push, Töpfe, Kalender,
+Essensplan) — inklusive Offline-Queue der Einkaufsliste und echter
+Zustellung einer Kalender-Erinnerung als Push. Dazu ein durchgängiges
+visuelles Design (warme Terracotta-Palette statt Test-Pink, Icons,
+Bottom-Nav) und ein Bugfix in der Einkaufsliste (Neu-erzeugen
+aktualisierte bisher nicht) — beides code-fertig, von Chris im Browser
+gegengecheckt. Neu dazugekommen: **Stufe 4 — Todo-Liste** ist jetzt in
+`PLAN.md` spezifiziert (Schema, Mechanik, DoD), aber noch nicht
+gebaut. Sonst offen: was echte Geräte/Zeit braucht (Drei-Tage-Handy-DoD
+aus Stufe 0, Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1), dazu
+Docker Compose (auf diesem Rechner nicht testbar).
 **Letzte Aktualisierung:** 2026-08-27
 **Branch:** `dev`
 
@@ -16,11 +19,11 @@ dazu Docker Compose (auf diesem Rechner nicht testbar).
 
 ## Nächster Schritt
 
-1. **Neues Design im Browser anschauen** (Chris) — freie Gestaltung
-   auf Zuruf gebaut, jetzt Feinjustierung nötig: `npm run dev`,
-   Startseite + alle vier Bereiche durchklicken, Licht- und Dunkelmodus
-   beide prüfen (System-Theme umschalten). Was auffällt, wird direkt
-   angepasst.
+1. **Stufe 4 — Todo-Liste bauen** (Spec steht in `PLAN.md` 3/4.4/5):
+   Migration (`Todo`, `TodoErinnerung`, `ReminderJob` generisch für
+   Termin/Todo), `/todos`-Seite, Bottom-Nav-Eintrag, Materialisierer/
+   Zusteller erweitern, Vorlaufzeiten-Liste bei Terminen um 2/3 Tage
+   ergänzen.
 2. Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" von früher —
    Tailscale-Login war schon gestartet, dann auf Chris' Wunsch
    zurückgestellt; jetzt akut, da Hosting auf NAS+Tailscale entschieden
@@ -81,6 +84,11 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Häkchen laufen optimistisch mit localStorage-Queue + Sync bei `online`-Event (bewusst kein natives Background Sync, siehe Entscheidungen)
   - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe
   - [x] Im Browser getestet, inklusive Offline-Queue in einem echten Browser-Offline-Zustand (Chris bestätigt, 2026-08-27)
+- [ ] **Stufe 4 — Todo-Liste** (Spec in `PLAN.md` 3/4.4/5 steht, noch nicht gebaut)
+  - [ ] Schema (`Todo`, `TodoErinnerung`, `ReminderJob` generisch für Termin/Todo) + Migration
+  - [ ] `/todos`-Seite, Bottom-Nav um sechsten Eintrag erweitern
+  - [ ] Materialisierer/Zusteller um Todo-Erinnerungen erweitern (dieselbe Queue wie Kalender, siehe PLAN.md 4.4)
+  - [ ] Vorlaufzeiten-Liste bei Terminen um 2/3 Tage erweitern (PLAN.md 4.4)
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -116,6 +124,8 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | Offline-Sync der Einkaufsliste über localStorage-Queue + `online`-Event, nicht die native Background-Sync-API | Echtes Background Sync bräuchte IndexedDB-Zugriff aus dem Service Worker (kein `localStorage` dort verfügbar) — für zwei Nutzer und eine Liste mit wenigen Einträgen reicht die einfachere Variante, die nur bei offener App synct statt auch bei geschlossenem Tab |
 | 2026-08-27 | Hosting jetzt: **NAS + Tailscale**; Hetzner-Umzug bleibt der spätere Weg, falls Play Store gewünscht | Play Store lohnt laut PLAN.md 8 für zwei Nutzer ohnehin nicht ("falscher Aufwand"), Sideload reicht. `docker-compose.yml` ist bewusst anbieterunabhängig gehalten — Umzug auf Hetzner ist dann nur `docker compose up` + DNS, kein Code-Unterschied. Domain-Entscheidung bleibt aufgeschoben, bis Play Store konkret ansteht (PLAN.md 8: Domain muss vor TWA-Verifizierung feststehen und bleibt dann fest) |
 | 2026-08-27 | Visuelles Design: warme Terracotta/Papier-Palette ("Bothy"-Hütte, Laternenlicht), Line-Icons, Bottom-Nav | Chris: "entscheide einfach du" — freie Gestaltung, danach Feinjustierung. Ersetzt das Test-Pink `#ff1dce` aus Commit 1bd700a, das laut dessen Commit-Message explizit kein finales Farbschema war |
+| 2026-08-27 | Neue **Stufe 4 — Todo-Liste** in PLAN.md aufgenommen (Priorität als feste Farbstufen, Erinnerungen wie Kalender aber nur tagesbasiert, keine Wiederholung, `betrifft`-Zuweisung wie Termine) | Chris' Wunsch; explizit als neue Stufe statt Backlog, da mit eigenem Schema/Erinnerungs-Pipeline vom Umfang vergleichbar mit Stufe 3. `ReminderJob` dabei generisch gemacht (`terminId`/`todoId` beide optional) statt einer zweiten Tabelle — eine Zusteller-Queue bleibt bestehen, gleiches Muster wie `Buchung.transferId` |
+| 2026-08-27 | Vorlaufzeiten für Erinnerungen um 2 und 3 Tage vorher erweitert (Termine *und* Todos) | Chris' Wunsch, im Zuge der Todo-Liste-Spec gleich für beide Features mit erledigt |
 
 ---
 
@@ -146,6 +156,32 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-27 (Fortsetzung 2) — Todo-Liste spezifiziert (Stufe 4)
+Chris wollte eine Todo-Liste ("Reiter") mit Priorisierung und
+Erinnerungen wie im Kalender. Das ist eine neue Idee, die nicht in
+`PLAN.md` stand — CLAUDE.md ist da eindeutig (Backlog, nicht laufende
+Stufe). Da der Umfang (eigenes Schema + Erinnerungs-Pipeline) mit
+Stufe 3 vergleichbar ist, nachgefragt statt selbst entschieden: Chris
+wollte es als formale neue Stufe in PLAN.md, nicht nur Backlog-Notiz.
+
+Vier Rückfragen geklärt (siehe Entscheidungen): Priorität als drei
+feste Farbstufen statt freier Farbwahl, Erinnerungen tagesbasiert wie
+beim Kalender aber um 2/3 Tage erweitert — und diese Erweiterung
+gleich für Termine *mit* übernommen, keine Wiederholung bei Todos
+(überschneidet sich sonst mit dem, was der Kalender schon kann),
+Zuweisung wie `betrifft` bei Terminen.
+
+**Als Stufe 4 in PLAN.md 3/4.4/5 spezifiziert, noch nicht gebaut.**
+Technische Entscheidung dabei: `ReminderJob` wird generisch
+(`terminId`/`todoId` beide optional, genau eines gesetzt) statt einer
+zweiten Tabelle — eine Zusteller-Queue bleibt bestehen, gleiches
+Muster wie `Buchung.transferId`. Todos brauchen keine 60-Tage-
+Vorschau-Materialisierung wie Termine (keine Serie, keine Uhrzeit),
+nur `dueAt = faelligkeit − minutenVorher` einmalig je Erinnerung.
+
+Nächste Instanz: Migration + `/todos`-Seite + Bottom-Nav-Eintrag +
+Materialisierer/Zusteller-Erweiterung bauen, siehe „Nächster Schritt".
 
 ### 2026-08-27 (Fortsetzung) — Durchgängiges visuelles Design
 Chris: "entscheide einfach du, versuch ne wirklich attraktive App zu

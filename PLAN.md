@@ -1,7 +1,7 @@
 # PLAN.md — Bothy
 
 Gemeinsame App für zwei Nutzer: Kalender mit Erinnerungen, Geldtöpfe,
-später Essensplan und Einkaufsliste.
+Essensplan und Einkaufsliste, später eine Todo-Liste.
 
 > *Bothy* — eine einfache, unverschlossene Hütte in den schottischen Bergen,
 > die sich Wanderer teilen. Ein kleiner gemeinsamer Unterschlupf für zwei.
@@ -151,7 +151,7 @@ model TerminErinnerung {
   id            String @id @default(cuid())
   terminId      String
   termin        Termin @relation(fields: [terminId], references: [id], onDelete: Cascade)
-  minutenVorher Int    // 0 | 15 | 60 | 1440 | 10080
+  minutenVorher Int    // 0 | 15 | 60 | 1440 | 2880 | 4320 | 10080 (um 2/3 Tage erweitert, siehe 4.4)
 }
 
 model TerminAusnahme {
@@ -163,10 +163,16 @@ model TerminAusnahme {
   @@unique([terminId, datum])
 }
 
+// terminId/todoId: genau eines von beiden ist gesetzt, nie beide, nie
+// keines — von den Materialisierern garantiert, nicht per DB-Constraint
+// (gleiches Muster wie Buchung.transferId: eine Tabelle statt zwei fast
+// identischer, damit der Zusteller nur eine Queue abarbeitet).
 model ReminderJob {
   id       String    @id @default(cuid())
-  terminId String
-  termin   Termin    @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  terminId String?
+  termin   Termin?   @relation(fields: [terminId], references: [id], onDelete: Cascade)
+  todoId   String?
+  todo     Todo?     @relation(fields: [todoId], references: [id], onDelete: Cascade)
   userId   String
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   dueAt    DateTime
@@ -174,8 +180,39 @@ model ReminderJob {
   versuche Int       @default(0)
   fehler   String?
 
-  @@unique([terminId, userId, dueAt])
+  @@unique([terminId, todoId, userId, dueAt])
   @@index([dueAt, sentAt])
+}
+
+// ---------- Todo-Liste ----------
+
+enum TodoPrioritaet {
+  NIEDRIG
+  NORMAL
+  HOCH
+}
+
+model Todo {
+  id           String           @id @default(cuid())
+  text         String
+  prioritaet   TodoPrioritaet   @default(NORMAL) // feste Farbe je Stufe, keine Frei-Farbwahl
+  erledigt     Boolean          @default(false)
+  faelligkeit  DateTime?        @db.Date         // optional, ganztägig gedacht — keine Uhrzeit
+  betrifft     Betrifft         @default(BEIDE)  // gleiche Konvention wie bei Termin
+  erinnerungen TodoErinnerung[]
+  jobs         ReminderJob[]
+  sortierung   Int              @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([faelligkeit])
+}
+
+model TodoErinnerung {
+  id            String @id @default(cuid())
+  todoId        String
+  todo          Todo   @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  minutenVorher Int    // 0 | 1440 | 2880 | 4320 | 10080 — nur Tagesbasis, Todos haben keine Uhrzeit
 }
 ```
 
@@ -264,6 +301,36 @@ Verschieben bleibt: Serie aussetzen + Einzeltermin anlegen.
 Monatlich am 29./30./31.: auf den **letzten Tag des Monats** klemmen,
 nicht in den Folgemonat überlaufen lassen.
 
+### 4.4 Todo-Liste
+
+Einfache Aufgabenliste, bewusst ohne Wiederholung — das deckt der
+Kalender schon ab (z.B. "Müll raus" als wöchentlicher Termin). Ein
+Todo ist ein einmaliger Eintrag: Text, Priorität (`NIEDRIG`/`NORMAL`/
+`HOCH`, feste Farbe je Stufe statt freier Farbwahl), optionales
+Fälligkeitsdatum, `betrifft` wie bei Terminen.
+
+**Erinnerungen laufen über dasselbe `ReminderJob` wie der Kalender**
+(siehe 4.1) — `ReminderJob.terminId`/`.todoId` sind jetzt beide
+optional, genau eines ist gesetzt. Der Zusteller bleibt eine einzige
+Queue. Weil ein Todo weder Serie noch Uhrzeit hat, ist seine
+Materialisierung trivial gegenüber `expandiereTermin`: keine
+Wiederholung zu expandieren, nur `dueAt = faelligkeit − minutenVorher`
+je gewählter Erinnerung und je betroffenem Nutzer — läuft im selben
+Materialisierer-Zeitfenster mit (täglich 03:00 + sofort nach Ändern),
+braucht aber keine 60-Tage-Vorschau, weil es keine Zukunft zu
+expandieren gibt.
+
+Die Vorlaufzeiten-Liste ist bei dieser Gelegenheit um **2 Tage** und
+**3 Tage vorher** erweitert — für Termine *und* Todos (siehe
+`TerminErinnerung`/`TodoErinnerung`-Kommentare in Abschnitt 3). Bei
+Todos stehen nur die Tagesstufen zur Wahl (Fälligkeitstag/1/2/3
+Tage/1 Woche vorher), da es keine Uhrzeit gibt, an der "15 Minuten
+vorher" etwas bedeuten würde.
+
+Erledigte Todos bleiben durchgestrichen sichtbar (wie abgehakte
+Einkaufslisten-Einträge), bis sie gelöscht werden — keine Historie,
+kein `archiviert`-Feld nötig.
+
 ---
 
 ## 5. Stufen
@@ -314,6 +381,18 @@ Einkaufsbetrag geht mit einem Tap als Buchung in den Einkaufsgeld-Topf.
 **Definition of Done**
 - Liste im Supermarkt ohne Netz abhakbar, synct beim nächsten Netz automatisch (Background Sync)
 - Der Weg Essensplan → Liste → Buchung ist geschlossen, ohne Doppeleingabe
+
+### Stufe 4 — Todo-Liste
+
+Einmalige Aufgaben mit Priorität (fest gefärbt: Niedrig/Normal/Hoch),
+optionalem Fälligkeitsdatum, Erinnerungen und Zuweisung (`betrifft`)
+wie beim Kalender. Siehe 4.4 für die Mechanik.
+
+**Definition of Done**
+- Todo mit Fälligkeit und einer Erinnerung (z.B. 2 Tage vorher) — Push kommt pünktlich an
+- `betrifft = PARTNER_B` schickt die Erinnerung nur an eine Person
+- Priorität ist auf einen Blick an der Farbe erkennbar, ohne die Karte zu öffnen
+- Erledigtes bleibt bis zum Löschen sichtbar (durchgestrichen), verschwindet nicht automatisch
 
 ---
 
