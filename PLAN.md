@@ -373,4 +373,3 @@ Sideload installieren — gleiches Ergebnis auf euren Geräten, null Bürokratie
 
 - Farbschema / Icon
 - Domain (erst nötig, falls/wenn Richtung Play Store — siehe 8)
-- Verhältnis zu **BiteWise** — entweder Stufe 3 ersetzt es, oder Stufe 3 entfällt
