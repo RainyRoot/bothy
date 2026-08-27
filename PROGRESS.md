@@ -1,13 +1,14 @@
 # PROGRESS.md
 
-**Stand:** Alle vier Stufen aus `PLAN.md` sind code-komplett und **alle
-im Browser getestet** (Gerüst/Auth/Push, Töpfe, Kalender, Essensplan) —
+**Stand:** Alle vier Stufen aus `PLAN.md` sind code-komplett und alle
+im Browser getestet (Gerüst/Auth/Push, Töpfe, Kalender, Essensplan) —
 inklusive Offline-Queue der Einkaufsliste und echter Zustellung einer
-Kalender-Erinnerung als Push. Offen ist inhaltlich nur noch, was echte
-Geräte/Zeit braucht: der Drei-Tage-Handy-DoD aus Stufe 0 und der
-Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1, dazu Docker Compose
-(auf diesem Rechner nicht testbar) und die Design-Restpunkte
-(Farbschema/Icon/App-Name).
+Kalender-Erinnerung als Push. Dazu ein durchgängiges visuelles Design
+(warme Terracotta-Palette statt Test-Pink, Icons, Bottom-Nav) —
+code-fertig, **noch nicht von Chris im Browser angeschaut**. Offen ist
+sonst nur noch, was echte Geräte/Zeit braucht: der Drei-Tage-Handy-DoD
+aus Stufe 0 und der Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1,
+dazu Docker Compose (auf diesem Rechner nicht testbar).
 **Letzte Aktualisierung:** 2026-08-27
 **Branch:** `dev`
 
@@ -15,17 +16,21 @@ Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1, dazu Docker Compose
 
 ## Nächster Schritt
 
-1. Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" von früher —
+1. **Neues Design im Browser anschauen** (Chris) — freie Gestaltung
+   auf Zuruf gebaut, jetzt Feinjustierung nötig: `npm run dev`,
+   Startseite + alle vier Bereiche durchklicken, Licht- und Dunkelmodus
+   beide prüfen (System-Theme umschalten). Was auffällt, wird direkt
+   angepasst.
+2. Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" von früher —
    Tailscale-Login war schon gestartet, dann auf Chris' Wunsch
    zurückgestellt; jetzt akut, da Hosting auf NAS+Tailscale entschieden
    ist). Login-URL war `https://login.tailscale.com/a/e11d2c9015be0`,
    vermutlich abgelaufen — bei Bedarf `tailscale up` neu ausführen.
-2. Docker Compose einmal real durchlaufen lassen — auf diesem
+3. Docker Compose einmal real durchlaufen lassen — auf diesem
    Entwicklungsrechner nicht möglich (keine Virtualisierung, siehe
    Session-Log), muss auf dem NAS passieren.
-3. Zwei-Geräte-Gleichzeitigkeitstest für Stufe 1 (Töpfe): Änderung auf
+4. Zwei-Geräte-Gleichzeitigkeitstest für Stufe 1 (Töpfe): Änderung auf
    einem Gerät binnen 30s beim anderen sichtbar.
-4. Farbschema, Icon, App-Name auf dem Homescreen entscheiden (PLAN.md 9).
 
 Danach ist inhaltlich nichts mehr offen aus PLAN.md 5 außer den
 Geräte-Verifikationen selbst.
@@ -110,6 +115,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | PARTNER_A/PARTNER_B = Registrierungsreihenfolge beim Setup, kein Schema-Feld | Bei genau zwei Nutzern reicht „wer hat sich zuerst registriert" als Konvention |
 | 2026-08-26 | Offline-Sync der Einkaufsliste über localStorage-Queue + `online`-Event, nicht die native Background-Sync-API | Echtes Background Sync bräuchte IndexedDB-Zugriff aus dem Service Worker (kein `localStorage` dort verfügbar) — für zwei Nutzer und eine Liste mit wenigen Einträgen reicht die einfachere Variante, die nur bei offener App synct statt auch bei geschlossenem Tab |
 | 2026-08-27 | Hosting jetzt: **NAS + Tailscale**; Hetzner-Umzug bleibt der spätere Weg, falls Play Store gewünscht | Play Store lohnt laut PLAN.md 8 für zwei Nutzer ohnehin nicht ("falscher Aufwand"), Sideload reicht. `docker-compose.yml` ist bewusst anbieterunabhängig gehalten — Umzug auf Hetzner ist dann nur `docker compose up` + DNS, kein Code-Unterschied. Domain-Entscheidung bleibt aufgeschoben, bis Play Store konkret ansteht (PLAN.md 8: Domain muss vor TWA-Verifizierung feststehen und bleibt dann fest) |
+| 2026-08-27 | Visuelles Design: warme Terracotta/Papier-Palette ("Bothy"-Hütte, Laternenlicht), Line-Icons, Bottom-Nav | Chris: "entscheide einfach du" — freie Gestaltung, danach Feinjustierung. Ersetzt das Test-Pink `#ff1dce` aus Commit 1bd700a, das laut dessen Commit-Message explizit kein finales Farbschema war |
 
 ---
 
@@ -118,7 +124,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 Beantwortet werden sie von Chris, nicht von einer Instanz allein.
 
 - Domain (erst nötig, falls/wenn Richtung Play Store — siehe Entscheidungen)
-- Farbschema, Icon, App-Name auf dem Homescreen
+- Farbschema/Icon: erster Entwurf steht (siehe Entscheidungen 2026-08-27), Chris' Feinjustierung nach Browser-Ansicht steht noch aus
 
 ---
 
@@ -140,6 +146,63 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-27 (Fortsetzung) — Durchgängiges visuelles Design
+Chris: "entscheide einfach du, versuch ne wirklich attraktive App zu
+bauen ... bau einfach was und wir feinjustieren danach" — freie
+Gestaltung, kein einzelner Feature-Auftrag.
+
+Vorher war die App optisch ungestylt: plaine Tailwind-Graustufen,
+Test-Pink `#ff1dce` (Commit 1bd700a, dort schon als "kein finales
+Farbschema" markiert) auf jedem Button, keine Navigation außer
+Text-Links "Zurück", keine Icons. 30 Dateien durchgesehen, dann:
+
+- **Palette:** warme Terracotta/Papier-Töne statt Neonpink, passend
+  zum Namen (Hütte, Laternenlicht) — als CSS-Variablen in
+  `globals.css` mit sauberem Light/Dark-Split, keine Einzelfarben mehr
+  im Markup verstreut.
+- **Komponentenklassen** (`.btn-primary`, `.card`, `.input`, `.chip`,
+  …) statt langer wiederholter Tailwind-Strings — zentral änderbar für
+  Chris' angekündigte Feinjustierung.
+- **Neu:** `icons.tsx` (handgezeichnetes Line-Icon-Set, kein neues
+  Package), `BottomNav.tsx` + `AppShell.tsx` (Daumen-erreichbare
+  Bottom-Navigation mit aktivem Zustand, Titelzeile mit
+  Zurück-Chevron statt Text-Link auf Unterseiten).
+- **Home-Dashboard neu:** Begrüßung mit Datum, 2×2-Kachel-Grid mit
+  Live-Hinweisen (Töpfe-Gesamtstand, nächster Termin) statt vier
+  kleinen Pillen-Links.
+- Nebenbei zwei echte Bugs gefunden und gefixt: Home verlinkte bisher
+  gar nicht auf `/einkaufsliste`; `setup/page.tsx` erwähnte noch
+  Passkeys (Text war seit dem Auth-Kurswechsel auf Passwort veraltet,
+  nie nachgezogen).
+- App-Icon (`public/icon.svg`) neu gezeichnet (Hütten-Silhouette,
+  Terracotta-Fenster), Theme-Farben in `manifest.json` und
+  `layout.tsx` (`viewport.themeColor`) angepasst.
+
+**Tailwind-v4-Stolperstein:** `@apply` einer eigenen Komponentenklasse
+aus einer anderen (`.btn-primary { @apply btn ... }`) schlägt fehl,
+wenn `btn` nur über `@layer components` definiert ist — Fehler "Cannot
+apply unknown utility class". Für die verkettete `btn`-Familie
+`@utility` statt `@layer components` verwendet (Tailwind v4s
+vorgesehener Weg für komponierbare Custom-Utilities).
+
+**Nebenbei aufgefallen:** der alte Dev-Server-Prozess aus einer
+früheren Session war zwischendurch abgestürzt, und lokales PostgreSQL
+war nicht mehr gestartet (0 Prozesse) — beides während dieser Session
+bemerkt und neu hochgefahren (siehe „Lokale DB neu starten"). Kein
+Zusammenhang mit den Code-Änderungen erkennbar, aber falls PostgreSQL
+künftig öfter von selbst wegbleibt: im Blick behalten.
+
+Verifiziert: `tsc --noEmit` und `eslint` sauber. Dev-Server sauber neu
+gestartet (Port 3000 war durch einen verwaisten Prozess belegt, dazu
+Postgres neu gestartet). Per curl mit echter Login-Session alle
+Top-Level-Seiten (Home, Töpfe, Kalender, Essensplan, Einkaufsliste)
+und die Unterseiten (Töpfe neu/umbuchen/monatsstart, Kalender neu, je
+ein echter Töpfe- und Termin-Datensatz per ID) auf HTTP 200 ohne
+Fehlermarker geprüft. **Nicht verifiziert: wie es tatsächlich aussieht**
+— das ist reine Server-Ebene, kein visueller Check. Nächster Schritt
+für Chris: im Browser anschauen, Licht- und Dunkelmodus beide, dann
+Feinjustierung.
 
 ### 2026-08-27 — Hosting-Entscheidung, Browser-Verifikation Stufe 2 & 3
 Hosting-Frage geklärt (war als „nur von Chris zu beantworten" markiert):
