@@ -82,8 +82,9 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Einkaufsliste aggregiert + dedupliziert Zutaten der Woche
   - [x] Service Worker bekam echtes Caching (vorher nur Push-Events) — nötig, damit die Liste offline überhaupt lädt
   - [x] Häkchen laufen optimistisch mit localStorage-Queue + Sync bei `online`-Event (bewusst kein natives Background Sync, siehe Entscheidungen)
-  - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe
-  - [x] Im Browser getestet, inklusive Offline-Queue in einem echten Browser-Offline-Zustand (Chris bestätigt, 2026-08-27)
+  - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe, beliebig oft wiederholbar (Chris' Fund: war nur clientseitig nach einmal ausblenden)
+  - [x] Mahlzeiten und Einkaufslisten-Artikel bearbeitbar (Chris' Feedback), Artikel einzeln hinzufügbar/löschbar
+  - [x] Im Browser getestet, inklusive Offline-Queue in einem echten Browser-Offline-Zustand (Chris bestätigt, 2026-08-27) — die Bearbeiten-Erweiterung danach nur per curl, noch nicht im Browser
 - [x] **Stufe 4 — Todo-Liste** (gebaut, per curl gegen die echte DB getestet, noch nicht im Browser)
   - [x] Schema (`Todo`, `TodoErinnerung`, `TodoReminderJob`) + Migration `20260827130009_stufe4_todo_liste`
   - [x] `/todos`-Seite (Quick-Add + „mehr"-Ausklapper für Priorität/Fälligkeit/Erinnerung/Zuweisung), Bottom-Nav um sechsten Eintrag erweitert, Home-Kachel mit „X offen"
@@ -153,7 +154,6 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 - Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
-- Essensplan-Mahlzeiten bearbeiten (aktuell wie Todos vorher: nur löschen+neu anlegen) — auffällig geworden beim Todo-Bearbeiten-Feedback, aber nicht angefragt
 
 ---
 
