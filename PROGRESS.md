@@ -109,6 +109,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-26 | Essensplan/Einkaufsliste-Schema neu entworfen (`Mahlzeit`, `Einkaufsliste`, `EinkaufslistenItem`) — Freitext-Zutaten, keine Rezeptablage | Stufe 3 hatte kein Schema in PLAN.md 3; Nicht-Ziele (PLAN.md 2) schließen Rezeptdatenbank/Nährwerte/Mengenumrechnung explizit aus |
 | 2026-08-26 | PARTNER_A/PARTNER_B = Registrierungsreihenfolge beim Setup, kein Schema-Feld | Bei genau zwei Nutzern reicht „wer hat sich zuerst registriert" als Konvention |
 | 2026-08-26 | Offline-Sync der Einkaufsliste über localStorage-Queue + `online`-Event, nicht die native Background-Sync-API | Echtes Background Sync bräuchte IndexedDB-Zugriff aus dem Service Worker (kein `localStorage` dort verfügbar) — für zwei Nutzer und eine Liste mit wenigen Einträgen reicht die einfachere Variante, die nur bei offener App synct statt auch bei geschlossenem Tab |
+| 2026-08-27 | Hosting jetzt: **NAS + Tailscale**; Hetzner-Umzug bleibt der spätere Weg, falls Play Store gewünscht | Play Store lohnt laut PLAN.md 8 für zwei Nutzer ohnehin nicht ("falscher Aufwand"), Sideload reicht. `docker-compose.yml` ist bewusst anbieterunabhängig gehalten — Umzug auf Hetzner ist dann nur `docker compose up` + DNS, kein Code-Unterschied. Domain-Entscheidung bleibt aufgeschoben, bis Play Store konkret ansteht (PLAN.md 8: Domain muss vor TWA-Verifizierung feststehen und bleibt dann fest) |
 
 ---
 
@@ -116,8 +117,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 
 Beantwortet werden sie von Chris, nicht von einer Instanz allein.
 
-- Hosting final: NAS + Tailscale oder Hetzner CX22? Der Play-Store-Pfad braucht Hetzner (`PLAN.md` 8). Jetzt akut, da alle vier Stufen code-komplett sind und der Stufe-0-DoD echte Erreichbarkeit von beiden Handys braucht.
-- Domain
+- Domain (erst nötig, falls/wenn Richtung Play Store — siehe Entscheidungen)
 - Farbschema, Icon, App-Name auf dem Homescreen
 
 ---

@@ -18,15 +18,19 @@ später Essensplan und Einkaufsliste.
 | Apple | **out of scope**, bewusst |
 | Stack | Next.js 15 (App Router), TypeScript, Prisma, PostgreSQL, Tailwind |
 | Betrieb | Docker Compose: `app` + `postgres` + `caddy` |
-| Hosting | Entscheidung vertagt — Compose läuft auf NAS *oder* Hetzner CX22 |
+| Hosting | **NAS + Tailscale** jetzt, Umzug auf Hetzner CX22 später bei Bedarf (siehe unten und `PROGRESS.md`) |
 | Push | Web Push (VAPID) → FCM, serverseitig geplant |
 
-### Warum die Hosting-Entscheidung vertagt wird
+### Hosting: NAS + Tailscale, Hetzner bleibt der spätere Weg
 
-Nichts im Setup ist anbieterspezifisch. Entwicklung auf `localhost`,
-erste Geräte-Tests über Tailscale gegen das NAS
-(`tailscale cert` liefert ein gültiges Zertifikat — Pflicht, siehe Fallen).
-Umzug auf Hetzner ist dann `docker compose up` plus DNS.
+Entscheidung 2026-08-27 (siehe `PROGRESS.md`): Betrieb läuft auf dem
+NAS, Geräte-Zugriff über Tailscale (`tailscale cert` liefert ein
+gültiges Zertifikat — Pflicht, siehe Fallen). Play Store lohnt für
+zwei Nutzer laut Abschnitt 8 ohnehin nicht, Sideload reicht.
+
+Nichts im Setup ist anbieterspezifisch, damit der Weg offen bleibt:
+Umzug auf Hetzner ist bei Bedarf nur `docker compose up` plus DNS,
+kein zweiter Codestand.
 
 ---
 
@@ -368,6 +372,5 @@ Sideload installieren — gleiches Ergebnis auf euren Geräten, null Bürokratie
 ## 9. Offen
 
 - Farbschema / Icon
-- Hosting final: NAS oder Hetzner (spätestens vor Stufe 2 entscheiden — siehe 8, der Play-Store-Pfad braucht Hetzner)
-- Domain
+- Domain (erst nötig, falls/wenn Richtung Play Store — siehe 8)
 - Verhältnis zu **BiteWise** — entweder Stufe 3 ersetzt es, oder Stufe 3 entfällt
