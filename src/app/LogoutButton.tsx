@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { IconLogOut } from "./icons";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -12,11 +13,8 @@ export function LogoutButton() {
   }
 
   return (
-    <button
-      onClick={handleLogout}
-      className="rounded border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
-    >
-      Abmelden
+    <button onClick={handleLogout} className="icon-btn" aria-label="Abmelden" title="Abmelden">
+      <IconLogOut className="h-5 w-5" />
     </button>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
+import { AppShell } from "../../AppShell";
 import { NeuerTopfForm } from "./NeuerTopfForm";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +10,8 @@ export default async function NeuerTopfPage() {
   if (!userId) redirect("/login");
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">Neuer Topf</h1>
+    <AppShell title="Neuer Topf" back="/toepfe">
       <NeuerTopfForm />
-    </main>
+    </AppShell>
   );
 }

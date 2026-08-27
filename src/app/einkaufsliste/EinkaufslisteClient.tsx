@@ -101,52 +101,56 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
 
   if (!liste) {
     return (
-      <div className="flex flex-col gap-3">
-        <p className="text-sm text-gray-500">Noch keine Liste für diese Woche.</p>
-        <button
-          onClick={erzeugen}
-          disabled={erzeugeBusy}
-          className="self-start rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
-        >
+      <div className="card flex flex-col items-center gap-3 text-center">
+        <p className="text-sm text-muted">Noch keine Liste für diese Woche.</p>
+        <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-primary">
           {erzeugeBusy ? "…" : "Aus Essensplan erzeugen"}
         </button>
       </div>
     );
   }
 
+  const offen = liste.items.filter((i) => !i.abgehakt);
+  const erledigt = liste.items.filter((i) => i.abgehakt);
+
   return (
     <div className="flex flex-col gap-6">
       {offline && (
-        <p className="rounded bg-yellow-100 px-3 py-2 text-xs text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+        <p className="rounded-xl border border-accent/30 bg-accent-soft px-3.5 py-2.5 text-xs text-accent">
           Offline — Häkchen werden gespeichert und synchronisiert, sobald wieder Netz da ist.
         </p>
       )}
 
       {liste.items.length === 0 ? (
-        <p className="text-sm text-gray-500">Keine Zutaten geplant.</p>
+        <p className="card text-center text-sm text-muted">Keine Zutaten geplant.</p>
       ) : (
-        <ul className="flex flex-col gap-1">
-          {liste.items.map((item) => (
-            <li key={item.id}>
-              <label className="flex items-center gap-2 rounded p-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-900">
-                <input type="checkbox" checked={item.abgehakt} onChange={() => toggle(item)} />
-                <span className={item.abgehakt ? "text-gray-400 line-through" : ""}>{item.text}</span>
-              </label>
-            </li>
+        <ul className="card flex flex-col divide-y divide-border !p-0">
+          {offen.map((item) => (
+            <ItemRow key={item.id} item={item} onToggle={toggle} />
+          ))}
+          {erledigt.map((item) => (
+            <ItemRow key={item.id} item={item} onToggle={toggle} />
           ))}
         </ul>
       )}
 
-      <button
-        onClick={erzeugen}
-        disabled={erzeugeBusy}
-        className="self-start text-sm text-gray-500 hover:underline disabled:opacity-50"
-      >
+      <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-ghost -ml-3 self-start">
         Neu aus Essensplan erzeugen (überschreibt Häkchen)
       </button>
 
       {toepfe.length > 0 && <EinkaufBuchen listeId={liste.id} toepfe={toepfe} />}
     </div>
+  );
+}
+
+function ItemRow({ item, onToggle }: { item: Item; onToggle: (item: Item) => void }) {
+  return (
+    <li>
+      <label className="flex items-center gap-3 px-3.5 py-3 text-sm transition-colors duration-150 hover:bg-surface-hover">
+        <input type="checkbox" checked={item.abgehakt} onChange={() => onToggle(item)} className="h-4 w-4" />
+        <span className={item.abgehakt ? "text-muted line-through" : ""}>{item.text}</span>
+      </label>
+    </li>
   );
 }
 
@@ -181,11 +185,11 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
   }
 
   if (erledigt) {
-    return <p className="text-sm text-green-600">{formatCent(parseEuroToCent(betrag))} gebucht.</p>;
+    return <p className="card text-sm text-success">{formatCent(parseEuroToCent(betrag))} gebucht.</p>;
   }
 
   return (
-    <form onSubmit={buchen} className="flex flex-col gap-2 border-t border-gray-200 pt-4 dark:border-gray-800">
+    <form onSubmit={buchen} className="card flex flex-col gap-3">
       <p className="text-sm font-medium">Einkauf abschließen</p>
       <div className="flex gap-2">
         <input
@@ -194,28 +198,20 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
           value={betrag}
           onChange={(e) => setBetrag(e.target.value)}
           required
-          className="w-28 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-transparent"
+          className="input w-28 !py-1.5"
         />
-        <select
-          value={topfId}
-          onChange={(e) => setTopfId(e.target.value)}
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-transparent"
-        >
+        <select value={topfId} onChange={(e) => setTopfId(e.target.value)} className="input flex-1 !py-1.5">
           {toepfe.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
           ))}
         </select>
-        <button
-          type="submit"
-          disabled={busy}
-          className="rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
-        >
+        <button type="submit" disabled={busy} className="btn-primary btn-sm shrink-0">
           Buchen
         </button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </form>
   );
 }

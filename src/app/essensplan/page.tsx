@@ -4,7 +4,9 @@ import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { berlinHeute } from "@/lib/timezone";
 import { montagDerWoche, addTage } from "@/lib/essensplan-shared";
+import { AppShell } from "../AppShell";
 import { Wochenplan } from "./Wochenplan";
+import { IconChevronLeft, IconCart } from "../icons";
 
 export const dynamic = "force-dynamic";
 
@@ -31,34 +33,31 @@ export default async function EssensplanPage({
   const naechsteWoche = addTage(montag, 7);
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 p-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Essensplan</h1>
-        <Link href="/" className="text-sm text-gray-500 hover:underline">
-          Zurück
+    <AppShell
+      title="Essensplan"
+      action={
+        <Link href={`/einkaufsliste?woche=${montag}`} className="icon-btn" aria-label="Einkaufsliste">
+          <IconCart className="h-5 w-5" />
         </Link>
-      </div>
-
+      }
+    >
       <div className="flex items-center justify-between">
-        <Link href={`/essensplan?woche=${vorherigeWoche}`} className="text-sm hover:underline">
-          ← Vorherige
+        <Link href={`/essensplan?woche=${vorherigeWoche}`} className="icon-btn -ml-2" aria-label="Vorherige Woche">
+          <IconChevronLeft className="h-5 w-5" />
         </Link>
         <span className="font-medium">
           {new Date(montag).toLocaleDateString("de-DE")} – {new Date(sonntag).toLocaleDateString("de-DE")}
         </span>
-        <Link href={`/essensplan?woche=${naechsteWoche}`} className="text-sm hover:underline">
-          Nächste →
+        <Link href={`/essensplan?woche=${naechsteWoche}`} className="icon-btn -mr-2 rotate-180" aria-label="Nächste Woche">
+          <IconChevronLeft className="h-5 w-5" />
         </Link>
       </div>
 
       <Wochenplan montag={montag} mahlzeiten={mahlzeiten} />
 
-      <Link
-        href={`/einkaufsliste?woche=${montag}`}
-        className="self-start rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]"
-      >
-        Einkaufsliste
+      <Link href={`/einkaufsliste?woche=${montag}`} className="btn-primary self-start">
+        <IconCart className="h-4 w-4" /> Einkaufsliste
       </Link>
-    </main>
+    </AppShell>
   );
 }

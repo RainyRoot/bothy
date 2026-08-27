@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addTage, tagSchluesselISO } from "@/lib/essensplan-shared";
+import { berlinHeute } from "@/lib/timezone";
+import { IconPlus } from "../icons";
 
 type Mahlzeit = { id: string; datum: Date | string; titel: string; zutaten: string };
 
@@ -11,6 +13,10 @@ const WOCHENTAGE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "
 export function Wochenplan({ montag, mahlzeiten }: { montag: string; mahlzeiten: Mahlzeit[] }) {
   const router = useRouter();
   const [offenerTag, setOffenerTag] = useState<string | null>(null);
+  const heuteISO = (() => {
+    const h = berlinHeute();
+    return `${h.jahr}-${String(h.monat).padStart(2, "0")}-${String(h.tag).padStart(2, "0")}`;
+  })();
 
   const mahlzeitenProTag = new Map<string, Mahlzeit[]>();
   for (const m of mahlzeiten) {
@@ -30,21 +36,22 @@ export function Wochenplan({ montag, mahlzeiten }: { montag: string; mahlzeiten:
       {WOCHENTAGE.map((name, i) => {
         const tagISO = addTage(montag, i);
         const tagMahlzeiten = mahlzeitenProTag.get(tagISO) ?? [];
+        const istHeute = tagISO === heuteISO;
         return (
-          <li key={tagISO} className="rounded border border-gray-200 p-2 dark:border-gray-800">
+          <li key={tagISO} className={`card ${istHeute ? "border-accent" : ""}`}>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">{name}</span>
+              <span className={`text-sm font-medium ${istHeute ? "text-accent" : ""}`}>{name}</span>
               <button
                 onClick={() => setOffenerTag(offenerTag === tagISO ? null : tagISO)}
-                className="text-sm text-gray-500 hover:underline"
+                className="btn-ghost -mr-2 btn-sm"
               >
-                + Mahlzeit
+                <IconPlus className="h-3.5 w-3.5" /> Mahlzeit
               </button>
             </div>
             {tagMahlzeiten.map((m) => (
-              <div key={m.id} className="mt-1 flex items-start justify-between gap-2 text-sm">
+              <div key={m.id} className="mt-1.5 flex items-start justify-between gap-2 text-sm">
                 <span>{m.titel}</span>
-                <button onClick={() => loeschen(m.id)} className="text-xs text-gray-400 hover:text-red-600">
+                <button onClick={() => loeschen(m.id)} className="shrink-0 text-xs text-muted hover:text-danger">
                   entfernen
                 </button>
               </div>
@@ -92,20 +99,16 @@ function MahlzeitForm({ datum, onDone }: { datum: string; onDone: () => void }) 
         value={titel}
         onChange={(e) => setTitel(e.target.value)}
         required
-        className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-transparent"
+        className="input !py-1.5 text-sm"
       />
       <textarea
         placeholder="Zutaten, eine pro Zeile"
         value={zutaten}
         onChange={(e) => setZutaten(e.target.value)}
         rows={3}
-        className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-transparent"
+        className="input text-sm"
       />
-      <button
-        type="submit"
-        disabled={busy}
-        className="self-start rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
-      >
+      <button type="submit" disabled={busy} className="btn-primary btn-sm self-start">
         {busy ? "…" : "Speichern"}
       </button>
     </form>

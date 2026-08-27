@@ -3,8 +3,10 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { getEreignisse } from "@/lib/kalender";
 import { berlinHeute } from "@/lib/timezone";
+import { AppShell } from "../AppShell";
 import { Monatsraster } from "./Monatsraster";
 import { Agenda } from "./Agenda";
+import { IconChevronLeft, IconPlus } from "../icons";
 
 export const dynamic = "force-dynamic";
 
@@ -39,39 +41,27 @@ export default async function KalenderPage({
   const agendaEreignisse = await getEreignisse(new Date(), agendaBis);
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 p-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Kalender</h1>
-        <Link href="/" className="text-sm text-gray-500 hover:underline">
-          Zurück
-        </Link>
-      </div>
+    <AppShell title="Kalender" action={<Link href="/kalender/neu" className="icon-btn" aria-label="Neuer Termin"><IconPlus className="h-5 w-5" /></Link>}>
+      <div className="card flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <Link href={`/kalender?monat=${vorherigerMonat}`} className="icon-btn -ml-2" aria-label="Vorheriger Monat">
+            <IconChevronLeft className="h-5 w-5" />
+          </Link>
+          <span className="font-medium">
+            {new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(new Date(Date.UTC(jahr, monat - 1, 1)))}
+          </span>
+          <Link href={`/kalender?monat=${naechsterMonat}`} className="icon-btn -mr-2 rotate-180" aria-label="Nächster Monat">
+            <IconChevronLeft className="h-5 w-5" />
+          </Link>
+        </div>
 
-      <div className="flex items-center justify-between">
-        <Link href={`/kalender?monat=${vorherigerMonat}`} className="text-sm hover:underline">
-          ← Vorheriger
-        </Link>
-        <span className="font-medium">
-          {new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" }).format(new Date(Date.UTC(jahr, monat - 1, 1)))}
-        </span>
-        <Link href={`/kalender?monat=${naechsterMonat}`} className="text-sm hover:underline">
-          Nächster →
-        </Link>
+        <Monatsraster jahr={jahr} monat={monat} ereignisse={ereignisse} />
       </div>
-
-      <Monatsraster jahr={jahr} monat={monat} ereignisse={ereignisse} />
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-gray-500">Nächste 30 Tage</h2>
+        <h2 className="mb-2 text-sm font-medium text-muted">Nächste 30 Tage</h2>
         <Agenda ereignisse={agendaEreignisse} />
       </div>
-
-      <Link
-        href="/kalender/neu"
-        className="self-start rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8]"
-      >
-        + Neuer Termin
-      </Link>
-    </main>
+    </AppShell>
   );
 }

@@ -38,18 +38,14 @@ export function UmbuchenForm({ toepfe }: { toepfe: TopfMitStand[] }) {
   }
 
   if (toepfe.length < 2) {
-    return <p className="text-sm text-gray-500">Für eine Umbuchung braucht es mindestens zwei Töpfe.</p>;
+    return <p className="text-sm text-muted">Für eine Umbuchung braucht es mindestens zwei Töpfe.</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
-        Von
-        <select
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={vonTopfId}
-          onChange={(e) => setVonTopfId(e.target.value)}
-        >
+      <label className="field">
+        <span className="field-label">Von</span>
+        <select className="input" value={vonTopfId} onChange={(e) => setVonTopfId(e.target.value)}>
           {toepfe.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name} ({formatCent(t.standCent)})
@@ -58,13 +54,9 @@ export function UmbuchenForm({ toepfe }: { toepfe: TopfMitStand[] }) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Nach
-        <select
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={nachTopfId}
-          onChange={(e) => setNachTopfId(e.target.value)}
-        >
+      <label className="field">
+        <span className="field-label">Nach</span>
+        <select className="input" value={nachTopfId} onChange={(e) => setNachTopfId(e.target.value)}>
           {toepfe.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name} ({formatCent(t.standCent)})
@@ -73,33 +65,25 @@ export function UmbuchenForm({ toepfe }: { toepfe: TopfMitStand[] }) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Betrag
+      <label className="field">
+        <span className="field-label">Betrag</span>
         <input
           inputMode="decimal"
           placeholder="0,00"
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          className="input"
           value={betrag}
           onChange={(e) => setBetrag(e.target.value)}
           required
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Notiz (optional)
-        <input
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={notiz}
-          onChange={(e) => setNotiz(e.target.value)}
-        />
+      <label className="field">
+        <span className="field-label">Notiz (optional)</span>
+        <input className="input" value={notiz} onChange={(e) => setNotiz(e.target.value)} />
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy || vonTopfId === nachTopfId}
-        className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
-      >
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <button type="submit" disabled={busy || vonTopfId === nachTopfId} className="btn-primary">
         {busy ? "…" : "Umbuchen"}
       </button>
     </form>

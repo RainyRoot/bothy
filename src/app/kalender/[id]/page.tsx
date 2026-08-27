@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toISODatum, berlinWallParts } from "@/lib/timezone";
+import { AppShell } from "../../AppShell";
 import { BearbeitenForm } from "./BearbeitenForm";
 import { TerminAktionen } from "./TerminAktionen";
 import type { TerminFormWerte } from "../TerminForm";
@@ -43,8 +44,7 @@ export default async function TerminDetailPage({ params }: { params: Promise<{ i
   };
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">Termin bearbeiten</h1>
+    <AppShell title="Termin bearbeiten" back="/kalender">
       <BearbeitenForm
         terminId={termin.id}
         initial={initial}
@@ -52,6 +52,6 @@ export default async function TerminDetailPage({ params }: { params: Promise<{ i
         partnerBName={users[1]?.name ?? "Person 2"}
       />
       <TerminAktionen terminId={termin.id} istSerie={termin.rhythmus !== "KEINE"} />
-    </main>
+    </AppShell>
   );
 }

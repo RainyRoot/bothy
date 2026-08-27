@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { berlinHeute } from "@/lib/timezone";
 import { montagDerWoche } from "@/lib/essensplan-shared";
+import { AppShell } from "../AppShell";
 import { EinkaufslisteClient } from "./EinkaufslisteClient";
 
 export const dynamic = "force-dynamic";
@@ -30,15 +30,8 @@ export default async function EinkaufslistePage({
   ]);
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 p-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Einkaufsliste</h1>
-        <Link href={`/essensplan?woche=${woche}`} className="text-sm text-gray-500 hover:underline">
-          Zum Essensplan
-        </Link>
-      </div>
-
+    <AppShell title="Einkaufsliste" back={`/essensplan?woche=${woche}`}>
       <EinkaufslisteClient woche={woche} initial={liste} toepfe={toepfe} />
-    </main>
+    </AppShell>
   );
 }

@@ -88,10 +88,10 @@ export function TerminForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
-        Titel
+      <label className="field">
+        <span className="field-label">Titel</span>
         <input
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          className="input"
           value={werte.titel}
           onChange={(e) => set("titel", e.target.value)}
           required
@@ -105,22 +105,22 @@ export function TerminForm({
       </label>
 
       <div className="flex gap-2">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Start
+        <label className="field flex-1">
+          <span className="field-label">Start</span>
           <input
             type="date"
-            className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+            className="input"
             value={werte.datumStart}
             onChange={(e) => set("datumStart", e.target.value)}
             required
           />
         </label>
         {!werte.ganztags && (
-          <label className="flex flex-col gap-1 text-sm">
-            Uhrzeit
+          <label className="field">
+            <span className="field-label">Uhrzeit</span>
             <input
               type="time"
-              className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+              className="input"
               value={werte.zeitStart}
               onChange={(e) => set("zeitStart", e.target.value)}
               required
@@ -129,27 +129,19 @@ export function TerminForm({
         )}
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Ort (optional)
-        <input
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={werte.ort}
-          onChange={(e) => set("ort", e.target.value)}
-        />
+      <label className="field">
+        <span className="field-label">Ort (optional)</span>
+        <input className="input" value={werte.ort} onChange={(e) => set("ort", e.target.value)} />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Notiz (optional)
-        <textarea
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={werte.notiz}
-          onChange={(e) => set("notiz", e.target.value)}
-        />
+      <label className="field">
+        <span className="field-label">Notiz (optional)</span>
+        <textarea className="input" value={werte.notiz} onChange={(e) => set("notiz", e.target.value)} />
       </label>
 
-      <div className="flex flex-col gap-1 text-sm">
-        Betrifft
-        <div className="flex gap-2">
+      <div className="field">
+        <span className="field-label">Betrifft</span>
+        <div className="flex flex-wrap gap-2">
           {(
             [
               ["BEIDE", "Beide"],
@@ -161,7 +153,7 @@ export function TerminForm({
               key={wert}
               type="button"
               onClick={() => set("betrifft", wert)}
-              className={`rounded border px-3 py-2 text-sm ${werte.betrifft === wert ? "border-foreground" : "border-gray-300 dark:border-gray-700"}`}
+              className={`chip ${werte.betrifft === wert ? "chip-active" : ""}`}
             >
               {label}
             </button>
@@ -169,10 +161,10 @@ export function TerminForm({
         </div>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Wiederholung
+      <label className="field">
+        <span className="field-label">Wiederholung</span>
         <select
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          className="input"
           value={werte.rhythmus}
           onChange={(e) => set("rhythmus", e.target.value as TerminFormWerte["rhythmus"])}
         >
@@ -183,11 +175,11 @@ export function TerminForm({
         </select>
       </label>
 
-      <div className="flex flex-col gap-1 text-sm">
-        Erinnerungen
-        <div className="flex flex-col gap-1">
+      <div className="field">
+        <span className="field-label">Erinnerungen</span>
+        <div className="card flex flex-col divide-y divide-border !p-0">
           {ERINNERUNGS_OPTIONEN.map((o) => (
-            <label key={o.minuten} className="flex items-center gap-2">
+            <label key={o.minuten} className="flex items-center gap-2 px-3.5 py-2.5">
               <input
                 type="checkbox"
                 checked={werte.erinnerungen.includes(o.minuten)}
@@ -199,28 +191,24 @@ export function TerminForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 text-sm">
-        Farbe
-        <div className="flex gap-2">
+      <div className="field">
+        <span className="field-label">Farbe</span>
+        <div className="flex flex-wrap gap-2">
           {FARBEN.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => set("farbe", f)}
               aria-label={f}
-              className="h-7 w-7 rounded-full"
-              style={{ backgroundColor: f, outline: werte.farbe === f ? "2px solid currentColor" : "none" }}
+              className="h-8 w-8 rounded-full transition-shadow"
+              style={{ backgroundColor: f, boxShadow: werte.farbe === f ? "0 0 0 2px var(--background), 0 0 0 4px currentColor" : "none" }}
             />
           ))}
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
-      >
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <button type="submit" disabled={busy} className="btn-primary">
         {busy ? "…" : submitLabel}
       </button>
     </form>

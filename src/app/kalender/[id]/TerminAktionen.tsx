@@ -50,7 +50,7 @@ export function TerminAktionen({ terminId, istSerie }: { terminId: string; istSe
   }
 
   return (
-    <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
+    <div className="flex flex-col gap-3 border-t border-border pt-4">
       {istSerie && (
         <>
           <form onSubmit={aussetzen} className="flex items-center gap-2 text-sm">
@@ -58,30 +58,18 @@ export function TerminAktionen({ terminId, istSerie }: { terminId: string; istSe
               type="date"
               value={aussetzenDatum}
               onChange={(e) => setAussetzenDatum(e.target.value)}
-              className="rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-transparent"
+              className="input !py-1.5"
             />
-            <button
-              type="submit"
-              disabled={busy || !aussetzenDatum}
-              className="rounded border border-gray-300 px-3 py-1 disabled:opacity-50 dark:border-gray-700"
-            >
-              Diesen Termin aussetzen
+            <button type="submit" disabled={busy || !aussetzenDatum} className="btn-secondary btn-sm shrink-0">
+              Aussetzen
             </button>
           </form>
-          <button
-            onClick={beenden}
-            disabled={busy}
-            className="self-start text-sm text-gray-500 hover:underline disabled:opacity-50"
-          >
+          <button onClick={beenden} disabled={busy} className="btn-ghost -ml-3 self-start">
             Serie ab heute beenden
           </button>
         </>
       )}
-      <button
-        onClick={loeschen}
-        disabled={busy}
-        className="self-start text-sm text-red-600 hover:underline disabled:opacity-50"
-      >
+      <button onClick={loeschen} disabled={busy} className="btn-danger-ghost self-start">
         Löschen
       </button>
     </div>

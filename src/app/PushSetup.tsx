@@ -83,7 +83,7 @@ export function PushSetup() {
   }
 
   if (status === "unsupported") {
-    return <p className="text-sm text-gray-500">Push wird auf diesem Gerät nicht unterstützt.</p>;
+    return <p className="text-sm text-muted">Push wird auf diesem Gerät nicht unterstützt.</p>;
   }
   if (status === "checking") {
     return null;
@@ -92,25 +92,20 @@ export function PushSetup() {
   return (
     <div className="flex flex-col items-center gap-3">
       {status === "off" && (
-        <button
-          onClick={enablePush}
-          disabled={busy}
-          className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
-        >
-          Push aktivieren
-        </button>
+        <>
+          <p className="text-sm text-muted">Erinnerungen kommen nur an, wenn Push aktiv ist.</p>
+          <button onClick={enablePush} disabled={busy} className="btn-primary">
+            Push aktivieren
+          </button>
+        </>
       )}
       {status === "on" && (
-        <button
-          onClick={sendTest}
-          disabled={busy}
-          className="rounded border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
-        >
+        <button onClick={sendTest} disabled={busy} className="btn-secondary btn-sm">
           Test-Benachrichtigung in 2 Minuten
         </button>
       )}
-      {testMessage && <p className="text-sm text-gray-500">{testMessage}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {testMessage && <p className="text-sm text-muted">{testMessage}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

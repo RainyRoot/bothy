@@ -36,31 +36,22 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1 text-sm">
-        Name
-        <input
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
+      <label className="field">
+        <span className="field-label">Name</span>
+        <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Passwort
+      <label className="field">
+        <span className="field-label">Passwort</span>
         <input
           type="password"
-          className="rounded border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-transparent"
+          className="input"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-full bg-[#ff1dce] px-4 py-2 text-sm font-medium text-white hover:bg-[#e619b8] disabled:opacity-50"
-      >
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <button type="submit" disabled={busy} className="btn-primary w-full">
         {busy ? "…" : "Anmelden"}
       </button>
     </form>

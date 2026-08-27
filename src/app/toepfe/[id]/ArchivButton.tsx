@@ -23,11 +23,7 @@ export function ArchivButton({ topfId, archiviert }: { topfId: string; archivier
   }
 
   return (
-    <button
-      onClick={toggle}
-      disabled={busy}
-      className="self-start rounded border border-gray-300 px-3 py-2 text-sm text-gray-500 disabled:opacity-50 dark:border-gray-700"
-    >
+    <button onClick={toggle} disabled={busy} className="btn-secondary self-start">
       {archiviert ? "Wiederherstellen" : "Archivieren"}
     </button>
   );

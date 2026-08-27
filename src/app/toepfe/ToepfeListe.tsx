@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { TopfMitStand } from "@/lib/toepfe-shared";
 import { monatsrateCent } from "@/lib/toepfe-shared";
 import { formatCent, parseEuroToCent } from "@/lib/money";
+import { IconPlus } from "../icons";
 
 const POLL_INTERVAL_MS = 10_000;
 
@@ -24,7 +25,11 @@ export function ToepfeListe({ initial }: { initial: TopfMitStand[] }) {
   }, []);
 
   if (toepfe.length === 0) {
-    return <p className="text-sm text-gray-500">Noch keine Töpfe angelegt.</p>;
+    return (
+      <div className="card text-center text-sm text-muted">
+        Noch keine Töpfe angelegt.
+      </div>
+    );
   }
 
   return (
@@ -76,24 +81,24 @@ function TopfCard({ topf, onBooked }: { topf: TopfMitStand; onBooked: (t: TopfMi
   }
 
   return (
-    <li className="rounded border border-gray-200 p-3 dark:border-gray-800">
-      <div className="flex items-center gap-2">
+    <li className="card">
+      <div className="flex items-center gap-2.5">
         <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: topf.farbe }} />
         <Link href={`/toepfe/${topf.id}`} className="flex-1 font-medium hover:underline">
           {topf.name}
         </Link>
-        <span className="tabular-nums">{formatCent(topf.standCent)}</span>
+        <span className="tabular-nums font-medium">{formatCent(topf.standCent)}</span>
       </div>
 
       {progress !== null && (
-        <div className="mt-2">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+        <div className="mt-3">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-hover">
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition-[width] duration-300"
               style={{ width: `${progress}%`, backgroundColor: topf.farbe }}
             />
           </div>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1.5 text-xs text-muted">
             Ziel {formatCent(zielCent!)}, Rest {formatCent(Math.max(zielCent! - topf.standCent, 0))}
             {rate !== null && rate > 0 && <> — {formatCent(rate)}/Monat nötig</>}
           </p>
@@ -106,16 +111,16 @@ function TopfCard({ topf, onBooked }: { topf: TopfMitStand; onBooked: (t: TopfMi
             setOpen(true);
             requestAnimationFrame(() => inputRef.current?.focus());
           }}
-          className="mt-2 text-sm text-gray-500 hover:underline"
+          className="btn-ghost -ml-3 mt-2"
         >
-          + Buchung
+          <IconPlus className="h-3.5 w-3.5" /> Buchung
         </button>
       ) : (
-        <form onSubmit={submitBuchung} className="mt-2 flex items-center gap-2">
+        <form onSubmit={submitBuchung} className="mt-3 flex items-center gap-2">
           <button
             type="button"
             onClick={() => setAusgabe((a) => !a)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700"
+            className="btn-secondary btn-sm !rounded-lg px-2.5"
             aria-label="Vorzeichen wechseln"
           >
             {ausgabe ? "−" : "+"}
@@ -126,22 +131,18 @@ function TopfCard({ topf, onBooked }: { topf: TopfMitStand; onBooked: (t: TopfMi
             placeholder="0,00"
             value={betrag}
             onChange={(e) => setBetrag(e.target.value)}
-            className="w-24 rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-700 dark:bg-transparent"
+            className="input !rounded-lg w-24 !py-1.5"
             required
           />
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-full bg-[#ff1dce] px-3 py-1 text-sm text-white hover:bg-[#e619b8] disabled:opacity-50"
-          >
+          <button type="submit" disabled={busy} className="btn-primary btn-sm">
             OK
           </button>
-          <button type="button" onClick={() => setOpen(false)} className="text-sm text-gray-500">
+          <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted">
             Abbrechen
           </button>
         </form>
       )}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-danger">{error}</p>}
     </li>
   );
 }

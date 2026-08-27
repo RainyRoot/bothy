@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { getToepfeMitStand } from "@/lib/toepfe";
+import { AppShell } from "../../AppShell";
 import { UmbuchenForm } from "./UmbuchenForm";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,8 @@ export default async function UmbuchenPage() {
   const toepfe = await getToepfeMitStand();
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-4 p-4">
-      <h1 className="text-xl font-semibold">Umbuchen</h1>
+    <AppShell title="Umbuchen" back="/toepfe">
       <UmbuchenForm toepfe={toepfe} />
-    </main>
+    </AppShell>
   );
 }
