@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatBerlinDatum } from "@/lib/timezone";
 import { IconPlus } from "../icons";
@@ -363,10 +363,23 @@ function BearbeitenForm({
   const [werte, setWerte] = useState<TodoWerte>(todoZuWerten(todo));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   function set<K extends keyof TodoWerte>(key: K, value: TodoWerte[K]) {
     setWerte((prev) => ({ ...prev, [key]: value }));
   }
+
+  // Klick/Tap außerhalb des Formulars schließt den Bearbeiten-Modus wieder,
+  // ohne dass extra "Abbrechen" getroffen werden muss.
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) {
+        onCancel();
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [onCancel]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -395,7 +408,7 @@ function BearbeitenForm({
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form ref={formRef} onSubmit={submit} className="flex flex-col gap-3">
       <input
         className="input"
         value={werte.text}
