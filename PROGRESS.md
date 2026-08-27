@@ -1,34 +1,34 @@
 # PROGRESS.md
 
-**Stand:** Alle vier Stufen aus `PLAN.md` sind jetzt code-komplett
-(Gerüst/Auth/Push, Töpfe, Kalender, Essensplan). Stufe 0 (Push) und
-Stufe 1 (Töpfe) hat Chris im Browser getestet, Stufe 2 (Kalender) und
-Stufe 3 (Essensplan) bisher nur per curl gegen die echte DB — noch
-nicht im Browser. Der Drei-Tage-Handy-DoD aus Stufe 0 ist weiterhin
-bewusst zurückgestellt (Chris' Entscheidung — erst die App fertig
-bauen, Handy-Rollout danach).
-**Letzte Aktualisierung:** 2026-08-26
+**Stand:** Alle vier Stufen aus `PLAN.md` sind code-komplett und **alle
+im Browser getestet** (Gerüst/Auth/Push, Töpfe, Kalender, Essensplan) —
+inklusive Offline-Queue der Einkaufsliste und echter Zustellung einer
+Kalender-Erinnerung als Push. Offen ist inhaltlich nur noch, was echte
+Geräte/Zeit braucht: der Drei-Tage-Handy-DoD aus Stufe 0 und der
+Zwei-Geräte-Gleichzeitigkeitstest aus Stufe 1, dazu Docker Compose
+(auf diesem Rechner nicht testbar) und die Design-Restpunkte
+(Farbschema/Icon/App-Name).
+**Letzte Aktualisierung:** 2026-08-27
 **Branch:** `dev`
 
 ---
 
 ## Nächster Schritt
 
-1. Essensplan/Einkaufsliste im Browser durchklicken: `/essensplan`
-   Mahlzeiten für eine Woche anlegen, `/einkaufsliste` erzeugen, Häkchen
-   setzen (auch offline testen — Flugmodus im Browser/DevTools,
-   Häkchen sollten trotzdem reagieren und beim Reconnect syncen),
-   Einkauf mit Betrag in einen Topf buchen.
-2. Kalender im Browser durchklicken (siehe Stufe-2-Zeile unten) —
-   auch das steht noch aus.
-3. Danach: der Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" —
+1. Stufe-0-DoD auf echten Handys (siehe „Offene Fragen" von früher —
    Tailscale-Login war schon gestartet, dann auf Chris' Wunsch
-   zurückgestellt). Login-URL war
-   `https://login.tailscale.com/a/e11d2c9015be0`, vermutlich
-   abgelaufen — bei Bedarf `tailscale up` neu ausführen.
+   zurückgestellt; jetzt akut, da Hosting auf NAS+Tailscale entschieden
+   ist). Login-URL war `https://login.tailscale.com/a/e11d2c9015be0`,
+   vermutlich abgelaufen — bei Bedarf `tailscale up` neu ausführen.
+2. Docker Compose einmal real durchlaufen lassen — auf diesem
+   Entwicklungsrechner nicht möglich (keine Virtualisierung, siehe
+   Session-Log), muss auf dem NAS passieren.
+3. Zwei-Geräte-Gleichzeitigkeitstest für Stufe 1 (Töpfe): Änderung auf
+   einem Gerät binnen 30s beim anderen sichtbar.
+4. Farbschema, Icon, App-Name auf dem Homescreen entscheiden (PLAN.md 9).
 
 Danach ist inhaltlich nichts mehr offen aus PLAN.md 5 außer den
-Browser-/Geräte-Verifikationen selbst.
+Geräte-Verifikationen selbst.
 
 **Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
 Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
@@ -63,19 +63,19 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Töpfe anlegen/archivieren, Buchungen erfassen, Umbuchen, Fortschrittsbalken bei Sparzielen, Monatsstart-Aktion
   - [x] Liste pollt alle 10s (DoD: Änderung binnen 30s sichtbar) — noch nicht mit zwei gleichzeitigen Sessions/Geräten getestet
   - [ ] **DoD:** siehe `PLAN.md` 5, noch nicht auf zwei Geräten gleichzeitig verifiziert
-- [x] **Stufe 2 — Kalender** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+- [x] **Stufe 2 — Kalender** (gebaut, im Browser von Chris getestet)
   - [x] Termin-CRUD, Wiederholungen (wöchentlich/monatlich/jährlich), Erinnerungen, Monatsraster, Agenda-Liste
   - [x] Löschen, Serie beenden, Einzeltermin aussetzen (PLAN.md 4.3)
   - [x] Materialisierer (60-Tage-Fenster, täglich 03:00 + sofort nach Änderung) über denselben Expansionscode wie die Kalenderansicht
   - [x] **DoD-Fälle per curl verifiziert:** Zeitzonen-Test (Geburtstag 1. März erscheint nicht am 28.2.), wöchentlich/monatlich korrekt über 3 Monate, Monatsklemmung am 31. bleibt stabil (kein Drift auf den 30.), `betrifft=PARTNER_A` erreicht nur einen Nutzer
-  - [ ] Noch nicht im Browser angeschaut; echte Zustellung der Erinnerungs-Pushes noch nicht beobachtet (nur ReminderJob-Zeilen in der DB geprüft)
-- [x] **Stufe 3 — Essensplan & Einkaufsliste** (gebaut, gegen echte DB getestet, noch nicht im Browser)
+  - [x] Im Browser angeschaut; Erinnerungs-Push tatsächlich zugestellt bekommen (Chris bestätigt, 2026-08-27)
+- [x] **Stufe 3 — Essensplan & Einkaufsliste** (gebaut, im Browser von Chris getestet)
   - [x] Wochenplan (Mahlzeiten mit Freitext-Zutaten, kein Rezeptdatenbank-Overhead)
   - [x] Einkaufsliste aggregiert + dedupliziert Zutaten der Woche
   - [x] Service Worker bekam echtes Caching (vorher nur Push-Events) — nötig, damit die Liste offline überhaupt lädt
   - [x] Häkchen laufen optimistisch mit localStorage-Queue + Sync bei `online`-Event (bewusst kein natives Background Sync, siehe Entscheidungen)
   - [x] „Einkauf abschließen" bucht direkt in einen Topf — Weg Essensplan→Liste→Buchung ohne Doppeleingabe
-  - [ ] Noch nicht im Browser getestet, insbesondere die Offline-Queue nicht in einem echten Browser-Offline-Zustand (nur der Code-Pfad, nicht das Verhalten selbst)
+  - [x] Im Browser getestet, inklusive Offline-Queue in einem echten Browser-Offline-Zustand (Chris bestätigt, 2026-08-27)
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -140,6 +140,32 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-08-27 — Hosting-Entscheidung, Browser-Verifikation Stufe 2 & 3
+Hosting-Frage geklärt (war als „nur von Chris zu beantworten" markiert):
+**NAS + Tailscale** jetzt, Umzug auf Hetzner bleibt bei Bedarf offen
+(`docker-compose.yml` ist bewusst anbieterunabhängig — nur `docker
+compose up` + DNS). Play Store lohnt laut PLAN.md 8 für zwei Nutzer
+ohnehin nicht. In PLAN.md 1 und 9 nachgezogen, dabei auch einen
+veralteten Punkt (Verhältnis zu BiteWise, war schon 2026-08-26
+entschieden) aus PLAN.md 9 entfernt.
+
+Chris hat danach Kalender und Essensplan/Einkaufsliste im Browser
+durchgeklickt — **beide erfolgreich**, inklusive der zwei kritischen
+Fälle, die vorher nur Code-Pfad-getestet waren: Offline-Queue der
+Einkaufsliste in einem echten Browser-Offline-Zustand (Häkchen
+gesetzt, beim Reconnect gesynct), und eine Kalender-Erinnerung kam
+tatsächlich als Push an (nicht nur `ReminderJob`-Zeile in der DB).
+Damit sind alle vier Stufen jetzt im Browser verifiziert.
+
+**Kein Browser-Automatisierungstool verfügbar** in dieser Umgebung
+(`chromium-cli` fehlt, Playwright nicht installiert) — Browser-Tests
+liefen daher wieder manuell durch Chris, nicht durch die Instanz.
+
+Verbleibend laut PLAN.md 5 (siehe „Nächster Schritt"): Stufe-0-Drei-
+Tage-DoD und Stufe-1-Zwei-Geräte-Test brauchen echte Handys, Docker
+Compose braucht das NAS (auf diesem Rechner keine Virtualisierung),
+Farbschema/Icon/App-Name ist noch offen.
 
 ### 2026-08-26 (Fortsetzung 3) — Stufe 3: Essensplan & Einkaufsliste
 Vor dem Bauen erst die offene Frage aus PROGRESS.md geklärt: BiteWise
