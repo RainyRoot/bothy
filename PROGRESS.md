@@ -90,7 +90,8 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] Materialisierer/Zusteller um Todo-Erinnerungen erweitert (eigene Queue, `TodoReminderJob`, siehe PLAN.md 4.4)
   - [x] Vorlaufzeiten-Liste bei Terminen um 2/3 Tage erweitert (PLAN.md 4.4)
   - [x] **Per curl verifiziert:** Todo mit Fälligkeit morgen + zwei Erinnerungen (0/1440 Min) erzeugt korrekt zwei `TodoReminderJob`-Zeilen nur für die zugewiesene Person; einer davon war sofort fällig und wurde **tatsächlich als Push zugestellt** (unbeabsichtigt beim Testen, siehe Session-Log) — echte Zustellung damit bereits bestätigt, nicht nur die Pipeline bis zur DB. `erledigt=true` löscht offene Jobs korrekt, Löschen kaskadiert `TodoErinnerung`+`TodoReminderJob` sauber weg
-  - [ ] Noch nicht im Browser angeschaut, keine Bearbeiten-Seite für bestehende Todos (bewusst weggelassen für v1 — löschen+neu anlegen reicht fürs Erste, siehe Backlog)
+  - [x] Bearbeiten nachgezogen (Chris' Feedback) — Tippen auf den Text öffnet ein Inline-Formular, Fälligkeit lässt sich auch wieder auf leer setzen (löscht offene Jobs korrekt mit)
+  - [ ] Noch nicht im Browser angeschaut
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -152,7 +153,7 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 - Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
-- Todo bearbeiten (bestehenden Eintrag ändern statt löschen+neu anlegen) — für v1 bewusst weggelassen
+- Essensplan-Mahlzeiten bearbeiten (aktuell wie Todos vorher: nur löschen+neu anlegen) — auffällig geworden beim Todo-Bearbeiten-Feedback, aber nicht angefragt
 
 ---
 
