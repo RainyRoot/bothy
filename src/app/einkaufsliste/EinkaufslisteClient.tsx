@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatCent, parseEuroToCent } from "@/lib/money";
-import { IconRestart } from "../icons";
+import { IconPlus } from "../icons";
 
 type Item = { id: string; text: string; abgehakt: boolean; sortierung: number };
 type Liste = { id: string; woche: Date | string; items: Item[] } | null;
@@ -43,6 +43,7 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
   const [liste, setListe] = useState(initial);
   const [erzeugeBusy, setErzeugeBusy] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [bearbeiteItemId, setBearbeiteItemId] = useState<string | null>(null);
 
   useEffect(() => {
     async function flushPending() {
@@ -103,6 +104,34 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
     }
   }
 
+  async function speichereText(item: Item, text: string) {
+    setListe((prev) => (prev ? { ...prev, items: prev.items.map((i) => (i.id === item.id ? { ...i, text } : i)) } : prev));
+    setBearbeiteItemId(null);
+    await fetch(`/api/einkaufsliste/items/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async function loeschenItem(id: string) {
+    setListe((prev) => (prev ? { ...prev, items: prev.items.filter((i) => i.id !== id) } : prev));
+    await fetch(`/api/einkaufsliste/items/${id}`, { method: "DELETE" });
+  }
+
+  async function artikelHinzufuegen(text: string) {
+    if (!liste) return;
+    const res = await fetch(`/api/einkaufsliste/${liste.id}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const item = await res.json();
+      setListe((prev) => (prev ? { ...prev, items: [...prev.items, item] } : prev));
+    }
+  }
+
   if (!liste) {
     return (
       <div className="card flex flex-col items-center gap-3 text-center">
@@ -126,32 +155,129 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
         <p className="card text-center text-sm text-muted">Keine Zutaten geplant.</p>
       ) : (
         <ul className="card flex flex-col divide-y divide-border !p-0">
-          {liste.items.map((item) => (
-            <ItemRow key={item.id} item={item} onToggle={toggle} />
-          ))}
+          {liste.items.map((item) =>
+            bearbeiteItemId === item.id ? (
+              <li key={item.id} className="px-3.5 py-2.5">
+                <BearbeitenItemForm item={item} onSaved={speichereText} onCancel={() => setBearbeiteItemId(null)} />
+              </li>
+            ) : (
+              <ItemRow
+                key={item.id}
+                item={item}
+                onToggle={toggle}
+                onEdit={() => setBearbeiteItemId(item.id)}
+                onDelete={loeschenItem}
+              />
+            ),
+          )}
         </ul>
       )}
 
-      <div className="flex flex-col items-start gap-1.5">
-        <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-secondary">
-          <IconRestart className="h-4 w-4" /> {erzeugeBusy ? "…" : "Neu aus Essensplan erzeugen"}
-        </button>
-        <p className="text-xs text-muted">Baut die Liste komplett neu — bestehende Häkchen gehen dabei verloren.</p>
-      </div>
+      <NeuerArtikelForm onAdd={artikelHinzufuegen} />
+
+      <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-secondary self-start">
+        {erzeugeBusy ? "…" : "Neu aus Essensplan erzeugen"}
+      </button>
+      <p className="-mt-4 text-xs text-muted">Baut die Liste komplett neu — bestehende Häkchen und manuell hinzugefügte Artikel gehen dabei verloren.</p>
 
       {toepfe.length > 0 && <EinkaufBuchen listeId={liste.id} toepfe={toepfe} />}
     </div>
   );
 }
 
-function ItemRow({ item, onToggle }: { item: Item; onToggle: (item: Item) => void }) {
+function ItemRow({
+  item,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  item: Item;
+  onToggle: (item: Item) => void;
+  onEdit: () => void;
+  onDelete: (id: string) => void;
+}) {
   return (
-    <li>
-      <label className="flex items-center gap-3 px-3.5 py-3 text-sm transition-colors duration-150 hover:bg-surface-hover">
-        <input type="checkbox" checked={item.abgehakt} onChange={() => onToggle(item)} className="h-4 w-4" />
+    <li className="flex items-center gap-2 px-3.5 py-2.5 text-sm">
+      <input type="checkbox" checked={item.abgehakt} onChange={() => onToggle(item)} className="h-4 w-4 shrink-0" />
+      <button onClick={onEdit} className="min-w-0 flex-1 truncate text-left">
         <span className={item.abgehakt ? "text-muted line-through" : ""}>{item.text}</span>
-      </label>
+      </button>
+      <button onClick={() => onDelete(item.id)} className="shrink-0 text-xs text-muted hover:text-danger">
+        entfernen
+      </button>
     </li>
+  );
+}
+
+function BearbeitenItemForm({
+  item,
+  onSaved,
+  onCancel,
+}: {
+  item: Item;
+  onSaved: (item: Item, text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(item.text);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (formRef.current && !formRef.current.contains(event.target as Node)) onCancel();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [onCancel]);
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (text.trim()) onSaved(item, text.trim());
+  }
+
+  return (
+    <form ref={formRef} onSubmit={submit} className="flex items-center gap-2">
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        required
+        autoFocus
+        className="input flex-1 !py-1.5 text-sm"
+      />
+      <button type="submit" className="btn-primary btn-sm shrink-0">
+        Speichern
+      </button>
+    </form>
+  );
+}
+
+function NeuerArtikelForm({ onAdd }: { onAdd: (text: string) => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!text.trim()) return;
+    setBusy(true);
+    try {
+      await onAdd(text.trim());
+      setText("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="flex gap-2">
+      <input
+        placeholder="Artikel hinzufügen…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="input flex-1"
+      />
+      <button type="submit" disabled={busy} className="btn-secondary shrink-0 !px-3.5">
+        <IconPlus className="h-4 w-4" />
+      </button>
+    </form>
   );
 }
 
@@ -161,7 +287,7 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
     toepfe.find((t) => t.name.toLowerCase().includes("einkauf"))?.id ?? toepfe[0].id,
   );
   const [busy, setBusy] = useState(false);
-  const [erledigt, setErledigt] = useState(false);
+  const [zuletztGebucht, setZuletztGebucht] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function buchen(event: React.FormEvent) {
@@ -177,7 +303,8 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Buchung fehlgeschlagen");
-      setErledigt(true);
+      setZuletztGebucht(betragCent);
+      setBetrag("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
     } finally {
@@ -185,13 +312,12 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
     }
   }
 
-  if (erledigt) {
-    return <p className="card text-sm text-success">{formatCent(parseEuroToCent(betrag))} gebucht.</p>;
-  }
-
   return (
     <form onSubmit={buchen} className="card flex flex-col gap-3">
       <p className="text-sm font-medium">Einkauf abschließen</p>
+      <p className="text-xs text-muted">
+        Nicht alles bekommen? Einfach mehrfach buchen — z.B. einmal für heute, noch einmal, wenn der Rest besorgt ist.
+      </p>
       <div className="flex gap-2">
         <input
           inputMode="decimal"
@@ -213,6 +339,9 @@ function EinkaufBuchen({ listeId, toepfe }: { listeId: string; toepfe: Topf[] })
         </button>
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
+      {zuletztGebucht !== null && !error && (
+        <p className="text-xs text-success">{formatCent(zuletztGebucht)} gebucht.</p>
+      )}
     </form>
   );
 }
