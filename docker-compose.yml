@@ -1,11 +1,15 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: runner
     restart: unless-stopped
     env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     expose:
       - "3000"
 
@@ -23,6 +27,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Läuft bei jedem `docker compose up` einmal durch und beendet sich —
+  # die App startet erst, wenn alle Migrationen angewendet sind.
+  migrate:
+    build:
+      context: .
+      target: migrator
+    restart: "no"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Tägliches pg_dump auf ein NAS-Verzeichnis (PLAN.md 7), 30 Tage
+  # aufbewahrt. Wiederherstellen: pg_restore -d bothy --clean <datei>.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          datei=/backups/bothy-$$(date +%Y-%m-%d).dump
+          if pg_dump -Fc -f "$$datei.tmp"; then
+            mv "$$datei.tmp" "$$datei"
+            echo "Backup geschrieben: $$datei"
+          else
+            echo "Backup FEHLGESCHLAGEN" >&2
+            rm -f "$$datei.tmp"
+          fi
+          find /backups -name 'bothy-*.dump' -mtime +30 -delete
+          sleep 86400
+        done
 
   caddy:
     image: caddy:2-alpine

@@ -48,3 +48,6 @@ next-env.d.ts
 .windsurf/
 .agents/
 skills-lock.json
+
+# lokale Backups des backup-Services
+/backups
