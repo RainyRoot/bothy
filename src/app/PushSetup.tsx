@@ -26,8 +26,9 @@ export function PushSetup() {
       setStatus("unsupported");
       return;
     }
-    navigator.serviceWorker
-      .register("/sw.js")
+    // Registriert wird zentral in ServiceWorkerRegister (mit Build-Version) —
+    // hier nur auf die fertige Registrierung warten
+    navigator.serviceWorker.ready
       .then((registration) => registration.pushManager.getSubscription())
       .then((subscription) => setStatus(subscription ? "on" : "off"))
       .catch(() => setStatus("off"));

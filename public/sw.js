@@ -1,20 +1,64 @@
 // Netzwerk-zuerst, Cache als Fallback: erlaubt Offline-Nutzung (z.B. Einkaufsliste
 // im Supermarkt) für alles, was mindestens einmal online geladen wurde.
-const CACHE_NAME = "bothy-cache-v1";
+// Registriert wird mit ?v=<Build-ID> (siehe ServiceWorkerRegister): jeder
+// Deploy installiert so einen neuen Worker, dessen activate die Caches des
+// alten Builds samt ihrer veralteten _next/static-Chunks wegräumt.
+const CACHE_NAME = `bothy-${new URL(self.location.href).searchParams.get("v") ?? "dev"}`;
+
+// Schwaches Netz (Supermarkt) soll nicht jede Seite hängen lassen: nach dieser
+// Zeit gilt der Request als gescheitert, und der Cache springt ein.
+const NETZ_TIMEOUT_MS = 4000;
+
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      const namen = await caches.keys();
+      await Promise.all(namen.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)));
+      await self.clients.claim();
+    })(),
+  );
+});
+
+function mitTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (wert) => {
+        clearTimeout(timer);
+        resolve(wert);
+      },
+      (fehler) => {
+        clearTimeout(timer);
+        reject(fehler);
+      },
+    );
+  });
+}
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  const netz = fetch(event.request).then((response) => {
+    if (response.ok) {
+      const clone = response.clone();
+      event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)));
+    }
+    return response;
+  });
+
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
-      })
-      .catch(async () => (await caches.match(event.request)) ?? Response.error()),
+    mitTimeout(netz, NETZ_TIMEOUT_MS).catch(async () => {
+      const treffer = await caches.match(event.request);
+      if (treffer) return treffer;
+      // Nichts im Cache: doch noch auf das langsame Netz warten statt sofort zu scheitern
+      return netz.catch(() => Response.error());
+    }),
   );
 });
 
@@ -32,8 +76,9 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: payload.body,
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icon-192.png",
+      // Android zeigt vom Badge nur den Alphakanal — muss ein einfarbiges PNG sein
+      badge: "/badge-96.png",
       data: { url: payload.url ?? "/" },
     }),
   );
@@ -43,15 +88,18 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url ?? "/";
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if (client.url === url && "focus" in client) {
-          return client.focus();
-        }
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      // client.url ist absolut, url relativ — nur den Pfad vergleichen
+      const passend = clients.find((c) => new URL(c.url).pathname === url);
+      if (passend && "focus" in passend) return passend.focus();
+
+      // Sonst ein offenes Bothy-Fenster weiternutzen statt ein neues aufzumachen
+      const irgendeins = clients.find((c) => "navigate" in c && "focus" in c);
+      if (irgendeins) {
+        await irgendeins.focus();
+        return irgendeins.navigate(url);
       }
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(url);
-      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
     }),
   );
 });

@@ -20,7 +20,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#17130f",
+  // Statusleiste passend zum Hintergrund (globals.css --background)
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fbf6ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#17130f" },
+  ],
 };
 
 export default function RootLayout({
