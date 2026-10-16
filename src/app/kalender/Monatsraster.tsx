@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Ereignis } from "@/lib/kalender";
-import { tagSchluessel } from "@/lib/kalender-shared";
+import { ereignisTagSchluessel, tagSchluessel } from "@/lib/kalender-shared";
 import { berlinHeute } from "@/lib/timezone";
 
 const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -21,7 +21,7 @@ export function Monatsraster({
 
   const ereignisseProTag = new Map<string, Ereignis[]>();
   for (const e of ereignisse) {
-    const schluessel = tagSchluessel(e.datum);
+    const schluessel = ereignisTagSchluessel(e.datum, e.ganztags);
     const liste = ereignisseProTag.get(schluessel) ?? [];
     liste.push(e);
     ereignisseProTag.set(schluessel, liste);

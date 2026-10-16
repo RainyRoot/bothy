@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
-import { getEreignisse } from "@/lib/kalender";
+import { getAnstehendeEreignisse, getEreignisse } from "@/lib/kalender";
 import { berlinHeute } from "@/lib/timezone";
 import { AppShell } from "../AppShell";
 import { Monatsraster } from "./Monatsraster";
@@ -30,15 +30,17 @@ export default async function KalenderPage({
   const { monat: monatParam } = await searchParams;
   const { jahr, monat } = parseMonat(monatParam);
 
-  const von = new Date(Date.UTC(jahr, monat - 1, 1));
-  const bis = new Date(Date.UTC(jahr, monat, 0, 23, 59, 59));
+  // Einen Tag Puffer zu beiden Seiten: ein Termin am 1. um 00:30 Berlin liegt
+  // in UTC noch im Vormonat. Das Raster sortiert nach Berlin-Tag ein und
+  // zeigt nur die Tage des Monats.
+  const von = new Date(Date.UTC(jahr, monat - 1, 0));
+  const bis = new Date(Date.UTC(jahr, monat, 1, 23, 59, 59));
   const ereignisse = await getEreignisse(von, bis);
 
   const vorherigerMonat = monat === 1 ? `${jahr - 1}-12` : `${jahr}-${String(monat - 1).padStart(2, "0")}`;
   const naechsterMonat = monat === 12 ? `${jahr + 1}-01` : `${jahr}-${String(monat + 1).padStart(2, "0")}`;
 
-  const agendaBis = new Date(Date.now() + 30 * 86_400_000);
-  const agendaEreignisse = await getEreignisse(new Date(), agendaBis);
+  const agendaEreignisse = await getAnstehendeEreignisse(30);
 
   return (
     <AppShell title="Kalender" action={<Link href="/kalender/neu" className="icon-btn" aria-label="Neuer Termin"><IconPlus className="h-5 w-5" /></Link>}>

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendPush } from "@/lib/push";
+import { erinnerungFaelligAm, expandiereTermin, tagSchluessel } from "@/lib/kalender-shared";
+import { formatBerlinRelativ } from "@/lib/timezone";
 
 const INTERVAL_MS = 60_000;
 const BATCH_SIZE = 50;
@@ -36,7 +38,7 @@ async function runOnce(): Promise<void> {
     take: BATCH_SIZE,
   });
   for (const job of jobs) {
-    await deliverTermin(job.id, job.terminId, job.userId, job.versuche);
+    await deliverTermin(job.id, job.terminId, job.userId, job.versuche, job.dueAt);
   }
 
   const todoJobs = await prisma.todoReminderJob.findMany({
@@ -49,9 +51,42 @@ async function runOnce(): Promise<void> {
   }
 }
 
-async function deliverTermin(jobId: string, terminId: string, userId: string, versuche: number): Promise<void> {
+/**
+ * Zu welchem Vorkommen gehört ein Job? Der Job speichert nur dueAt — also das
+ * Vorkommen der nächsten Tage suchen, dessen Erinnerung genau dort fällig war.
+ */
+function vorkommenZuJob(
+  termin: Parameters<typeof expandiereTermin>[0] & {
+    erinnerungen: { minutenVorher: number }[];
+    ausnahmen: { datum: Date }[];
+  },
+  dueAt: Date,
+): Date | null {
+  const ausnahmeTage = new Set(termin.ausnahmen.map((a) => tagSchluessel(a.datum)));
+  const kandidaten = expandiereTermin(
+    { ...termin, archiviert: false },
+    ausnahmeTage,
+    new Date(dueAt.getTime() - 86_400_000),
+    new Date(dueAt.getTime() + 8 * 86_400_000),
+  );
+  return (
+    kandidaten.find((datum) =>
+      termin.erinnerungen.some(
+        (e) => erinnerungFaelligAm(datum, termin.ganztags, e.minutenVorher).getTime() === dueAt.getTime(),
+      ),
+    ) ?? null
+  );
+}
+
+async function deliverTermin(
+  jobId: string,
+  terminId: string,
+  userId: string,
+  versuche: number,
+  dueAt: Date,
+): Promise<void> {
   const [termin, subscriptions] = await Promise.all([
-    prisma.termin.findUnique({ where: { id: terminId } }),
+    prisma.termin.findUnique({ where: { id: terminId }, include: { erinnerungen: true, ausnahmen: true } }),
     prisma.pushSubscription.findMany({ where: { userId } }),
   ]);
 
@@ -60,7 +95,16 @@ async function deliverTermin(jobId: string, terminId: string, userId: string, ve
     return;
   }
 
-  const erfolg = await pushAnAlle(subscriptions, { title: termin.titel, body: termin.notiz ?? undefined });
+  // Test-Benachrichtigungen hängen an einem archivierten Träger-Termin ohne Erinnerungen
+  const vorkommen = termin.archiviert ? null : vorkommenZuJob(termin, dueAt);
+  const body = [vorkommen ? formatBerlinRelativ(vorkommen, termin.ganztags) : null, termin.ort, termin.notiz]
+    .filter(Boolean)
+    .join(" · ");
+  const erfolg = await pushAnAlle(subscriptions, {
+    title: termin.titel,
+    body: body || undefined,
+    url: termin.archiviert ? "/" : `/kalender/${termin.id}`,
+  });
   if (erfolg) {
     await prisma.reminderJob.update({ where: { id: jobId }, data: { sentAt: new Date() } });
   } else {
@@ -79,7 +123,11 @@ async function deliverTodo(jobId: string, todoId: string, userId: string, versuc
     return;
   }
 
-  const erfolg = await pushAnAlle(subscriptions, { title: `Todo: ${todo.text}`, url: "/todos" });
+  const erfolg = await pushAnAlle(subscriptions, {
+    title: `Todo: ${todo.text}`,
+    body: todo.faelligkeit ? `fällig ${formatBerlinRelativ(todo.faelligkeit, true)}` : undefined,
+    url: "/todos",
+  });
   if (erfolg) {
     await prisma.todoReminderJob.update({ where: { id: jobId }, data: { sentAt: new Date() } });
   } else {

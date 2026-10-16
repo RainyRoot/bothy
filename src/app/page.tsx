@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getToepfeMitStand } from "@/lib/toepfe";
-import { getEreignisse } from "@/lib/kalender";
+import { getAnstehendeEreignisse } from "@/lib/kalender";
 import { formatCent } from "@/lib/money";
 import { formatBerlinDatum } from "@/lib/timezone";
 import { BottomNav } from "./BottomNav";
@@ -26,7 +26,7 @@ export default async function Home() {
 
   const [toepfe, naechsteTermine, offeneTodos] = await Promise.all([
     getToepfeMitStand(),
-    getEreignisse(new Date(), new Date(Date.now() + 30 * 86_400_000)),
+    getAnstehendeEreignisse(30),
     prisma.todo.count({ where: { erledigt: false } }),
   ]);
 

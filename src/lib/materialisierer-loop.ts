@@ -1,5 +1,6 @@
 import { materialisiereAlle } from "@/lib/reminder-materialize";
 import { materialisiereAlleTodos } from "@/lib/todo-materialize";
+import { berlinWallParts, berlinWallToUTC } from "@/lib/timezone";
 
 let started = false;
 
@@ -31,10 +32,12 @@ async function laufen() {
   }
 }
 
+/** 03:00 Berlin, nicht Serverzeit — der Container läuft in UTC. */
 function warteBisNaechste0300Uhr(): Promise<void> {
   const jetzt = new Date();
-  const naechste = new Date(jetzt);
-  naechste.setHours(3, 0, 0, 0);
-  if (naechste <= jetzt) naechste.setDate(naechste.getDate() + 1);
+  let naechste = berlinWallToUTC(berlinWallParts(jetzt).datum, "03:00");
+  if (naechste <= jetzt) {
+    naechste = berlinWallToUTC(berlinWallParts(new Date(jetzt.getTime() + 86_400_000)).datum, "03:00");
+  }
   return new Promise((resolve) => setTimeout(resolve, naechste.getTime() - jetzt.getTime()));
 }
