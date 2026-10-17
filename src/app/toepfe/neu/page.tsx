@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { AppShell } from "../../AppShell";
-import { NeuerTopfForm } from "./NeuerTopfForm";
+import { TopfForm } from "../TopfForm";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export default async function NeuerTopfPage() {
 
   return (
     <AppShell title="Neuer Topf" back="/toepfe">
-      <NeuerTopfForm />
+      <TopfForm />
     </AppShell>
   );
 }

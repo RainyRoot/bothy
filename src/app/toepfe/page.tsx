@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { getToepfeMitStand } from "@/lib/toepfe";
+import { prisma } from "@/lib/prisma";
 import { AppShell } from "../AppShell";
 import { ToepfeListe } from "./ToepfeListe";
 import { IconSwap, IconRestart, IconPlus } from "../icons";
@@ -12,7 +13,10 @@ export default async function ToepfePage() {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
 
-  const toepfe = await getToepfeMitStand();
+  const [toepfe, archiviert] = await Promise.all([
+    getToepfeMitStand(),
+    prisma.topf.count({ where: { archiviert: true } }),
+  ]);
 
   return (
     <AppShell title="Töpfe">
@@ -28,6 +32,11 @@ export default async function ToepfePage() {
         <Link href="/toepfe/monatsstart" className="chip inline-flex items-center gap-1.5">
           <IconRestart className="h-4 w-4" /> Monatsstart
         </Link>
+        {archiviert > 0 && (
+          <Link href="/toepfe/archiv" className="chip inline-flex items-center gap-1.5">
+            Archiv ({archiviert})
+          </Link>
+        )}
       </div>
     </AppShell>
   );

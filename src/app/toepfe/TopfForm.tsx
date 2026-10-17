@@ -2,19 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { parseEuroToCent } from "@/lib/money";
+import { formatCent, parseEuroToCent } from "@/lib/money";
 
 const FARBEN = ["#e11d48", "#ea580c", "#ca8a04", "#16a34a", "#0891b2", "#2563eb", "#7c3aed", "#db2777"];
 
-export function NeuerTopfForm() {
+export type TopfFormWerte = {
+  name: string;
+  typ: "VERBRAUCH" | "SPARZIEL";
+  farbe: string;
+  zielCent: number | null;
+  zielDatum: string; // "" oder "YYYY-MM-DD"
+};
+
+/** Anlegen (ohne topfId) und Bearbeiten (mit topfId) eines Topfs. */
+export function TopfForm({ topfId, initial }: { topfId?: string; initial?: TopfFormWerte }) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [typ, setTyp] = useState<"VERBRAUCH" | "SPARZIEL">("VERBRAUCH");
-  const [farbe, setFarbe] = useState(FARBEN[0]);
-  const [zielBetrag, setZielBetrag] = useState("");
-  const [zielDatum, setZielDatum] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [typ, setTyp] = useState<"VERBRAUCH" | "SPARZIEL">(initial?.typ ?? "VERBRAUCH");
+  const [farbe, setFarbe] = useState(initial?.farbe ?? FARBEN[0]);
+  const [zielBetrag, setZielBetrag] = useState(
+    initial?.zielCent != null ? formatCent(initial.zielCent).replace(/[^\d,]/g, "") : "",
+  );
+  const [zielDatum, setZielDatum] = useState(initial?.zielDatum ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Eigene Farbe (nicht aus der Palette) beim Bearbeiten trotzdem anbieten
+  const farben = FARBEN.includes(farbe) ? FARBEN : [...FARBEN, farbe];
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -23,18 +37,18 @@ export function NeuerTopfForm() {
     try {
       const body: Record<string, unknown> = { name, typ, farbe };
       if (typ === "SPARZIEL") {
-        if (zielBetrag) body.zielCent = parseEuroToCent(zielBetrag);
-        if (zielDatum) body.zielDatum = zielDatum;
+        body.zielCent = zielBetrag ? parseEuroToCent(zielBetrag) : null;
+        body.zielDatum = zielDatum;
       }
-      const res = await fetch("/api/toepfe", {
-        method: "POST",
+      const res = await fetch(topfId ? `/api/toepfe/${topfId}` : "/api/toepfe", {
+        method: topfId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Fehler beim Anlegen");
+      if (!res.ok) throw new Error(json.error ?? "Speichern fehlgeschlagen");
 
-      router.push("/toepfe");
+      router.push(topfId ? `/toepfe/${topfId}` : "/toepfe");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unbekannter Fehler");
@@ -103,7 +117,7 @@ export function NeuerTopfForm() {
       <div className="field">
         <span className="field-label">Farbe</span>
         <div className="flex flex-wrap gap-2">
-          {FARBEN.map((f) => (
+          {farben.map((f) => (
             <button
               key={f}
               type="button"
@@ -118,7 +132,7 @@ export function NeuerTopfForm() {
 
       {error && <p className="text-sm text-danger">{error}</p>}
       <button type="submit" disabled={busy} className="btn-primary">
-        {busy ? "…" : "Anlegen"}
+        {busy ? "…" : topfId ? "Speichern" : "Anlegen"}
       </button>
     </form>
   );
