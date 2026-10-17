@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { datumOderNull, mitEingabepruefung, zeitpunktOderNull } from "@/lib/eingabe";
 
-export async function GET(request: NextRequest) {
+export const GET = mitEingabepruefung(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const vonParam = searchParams.get("von");
   const bisParam = searchParams.get("bis");
-  const von = vonParam ? new Date(vonParam) : new Date();
-  const bis = bisParam ? new Date(bisParam) : new Date(von.getTime() + 6 * 86_400_000);
+  const von = zeitpunktOderNull(vonParam, "von") ?? new Date();
+  const bis = zeitpunktOderNull(bisParam, "bis") ?? new Date(von.getTime() + 6 * 86_400_000);
 
   const mahlzeiten = await prisma.mahlzeit.findMany({
     where: { datum: { gte: von, lte: bis } },
@@ -14,11 +15,11 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(mahlzeiten);
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = mitEingabepruefung(async (request: NextRequest) => {
   const body = await request.json().catch(() => null);
-  const datum = typeof body?.datum === "string" && body.datum ? body.datum : null;
+  const datum = datumOderNull(body?.datum, "Datum");
   const titel = typeof body?.titel === "string" ? body.titel.trim() : "";
   const zutaten = typeof body?.zutaten === "string" ? body.zutaten.trim() : "";
 
@@ -30,8 +31,8 @@ export async function POST(request: NextRequest) {
   }
 
   const mahlzeit = await prisma.mahlzeit.create({
-    data: { datum: new Date(datum), titel, zutaten },
+    data: { datum, titel, zutaten },
   });
 
   return NextResponse.json(mahlzeit, { status: 201 });
-}
+});

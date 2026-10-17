@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTopfStand } from "@/lib/toepfe";
+import { datumOderNull, mitEingabepruefung } from "@/lib/eingabe";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,7 +21,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   return NextResponse.json({ ...topf, standCent });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = mitEingabepruefung(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -30,7 +31,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (typeof body?.sortierung === "number") data.sortierung = body.sortierung;
   if (typeof body?.archiviert === "boolean") data.archiviert = body.archiviert;
   if (typeof body?.zielCent === "number") data.zielCent = Math.round(body.zielCent);
-  if (typeof body?.zielDatum === "string") data.zielDatum = body.zielDatum ? new Date(body.zielDatum) : null;
+  if (body?.zielDatum !== undefined) data.zielDatum = datumOderNull(body.zielDatum, "Zieldatum");
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Keine Änderungen übergeben" }, { status: 400 });
@@ -38,4 +39,4 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const topf = await prisma.topf.update({ where: { id }, data });
   return NextResponse.json(topf);
-}
+});

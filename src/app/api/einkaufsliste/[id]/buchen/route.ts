@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/session";
+import { berlinHeuteAlsDatum } from "@/lib/timezone";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getSessionUserId();
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       topfId,
       betragCent: -betragCent,
       notiz: "Einkauf",
-      datum: new Date(),
+      datum: berlinHeuteAlsDatum(),
       vonUserId: userId,
     },
   });

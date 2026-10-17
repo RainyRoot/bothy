@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { remateralisiereTodoNachAenderung } from "@/lib/todo-materialize";
+import { datumOderNull, mitEingabepruefung } from "@/lib/eingabe";
 
 const PRIORITAETEN = ["NIEDRIG", "NORMAL", "HOCH"] as const;
 const BETRIFFT_WERTE = ["PARTNER_A", "PARTNER_B", "BEIDE"] as const;
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = mitEingabepruefung(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -20,7 +21,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (PRIORITAETEN.includes(body?.prioritaet)) data.prioritaet = body.prioritaet;
   if (BETRIFFT_WERTE.includes(body?.betrifft)) data.betrifft = body.betrifft;
   if (body?.faelligkeit !== undefined) {
-    data.faelligkeit = typeof body.faelligkeit === "string" && body.faelligkeit ? new Date(body.faelligkeit) : null;
+    data.faelligkeit = datumOderNull(body.faelligkeit, "Fälligkeit");
   }
 
   const erinnerungen: number[] | null = Array.isArray(body?.erinnerungen)
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const todo = await prisma.todo.findUnique({ where: { id }, include: { erinnerungen: true } });
   return NextResponse.json(todo);
-}
+});
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

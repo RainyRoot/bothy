@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { datumOderNull, mitEingabepruefung } from "@/lib/eingabe";
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = mitEingabepruefung(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
@@ -14,14 +15,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data.titel = titel;
   }
   if (typeof body?.zutaten === "string") data.zutaten = body.zutaten.trim();
-  if (typeof body?.datum === "string" && body.datum) data.datum = new Date(body.datum);
+  const datum = datumOderNull(body?.datum, "Datum");
+  if (datum) data.datum = datum;
 
   const mahlzeit = await prisma.mahlzeit.update({ where: { id }, data }).catch(() => null);
   if (!mahlzeit) {
     return NextResponse.json({ error: "Mahlzeit nicht gefunden" }, { status: 404 });
   }
   return NextResponse.json(mahlzeit);
-}
+});
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

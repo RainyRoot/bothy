@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/session";
+import { berlinHeuteAlsDatum } from "@/lib/timezone";
 
 export async function POST(request: NextRequest) {
   const userId = await getSessionUserId();
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
 
   const transferId = crypto.randomUUID();
-  const datum = new Date();
+  const datum = berlinHeuteAlsDatum();
 
   await prisma.$transaction([
     prisma.buchung.create({

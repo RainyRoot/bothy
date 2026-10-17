@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { remateralisiereNachAenderung } from "@/lib/reminder-materialize";
+import { datumOderNull, mitEingabepruefung } from "@/lib/eingabe";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = mitEingabepruefung(async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
   const body = await request.json().catch(() => null);
-  const datum = typeof body?.datum === "string" && body.datum ? body.datum : null;
+  const datum = datumOderNull(body?.datum, "Datum");
   if (!datum) {
     return NextResponse.json({ error: "Datum fehlt" }, { status: 400 });
   }
@@ -16,12 +17,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   await prisma.terminAusnahme.upsert({
-    where: { terminId_datum: { terminId: id, datum: new Date(datum) } },
-    create: { terminId: id, datum: new Date(datum) },
+    where: { terminId_datum: { terminId: id, datum } },
+    create: { terminId: id, datum },
     update: {},
   });
 
   await remateralisiereNachAenderung(id);
 
   return NextResponse.json({ ok: true });
-}
+});

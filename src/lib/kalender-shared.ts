@@ -115,19 +115,23 @@ export function expandiereTermin(
 }
 
 /**
- * Wann die Erinnerung zu einem Vorkommen fällig ist. Mit Uhrzeit: schlicht
- * `vorkommen − minutenVorher`. Ganztägig (Termine wie Todos, 00:00 UTC
+ * Wann die Erinnerung zu einem Vorkommen fällig ist — gerechnet in
+ * Berlin-Wanduhrzeit, damit "1 Woche vorher" über die Zeitumstellung hinweg
+ * dieselbe Uhrzeit trifft. Ganztägig (Termine wie Todos, 00:00 UTC
  * gespeichert): verankert an 08:00 Berlin — sonst käme "1 Tag vorher" für
  * einen Geburtstag um 02:00 nachts.
  */
 export function erinnerungFaelligAm(vorkommen: Date, ganztags: boolean, minutenVorher: number): Date {
-  if (!ganztags) return new Date(vorkommen.getTime() - minutenVorher * 60_000);
+  let wandStart: number;
+  if (ganztags) {
+    const [stunde, minute] = GANZTAGS_ERINNERUNG_UHRZEIT.split(":").map(Number);
+    wandStart = Date.UTC(vorkommen.getUTCFullYear(), vorkommen.getUTCMonth(), vorkommen.getUTCDate(), stunde, minute);
+  } else {
+    const wand = berlinWallParts(vorkommen);
+    wandStart = new Date(`${wand.datum}T${wand.zeit}:00Z`).getTime();
+  }
 
-  const [stunde, minute] = GANZTAGS_ERINNERUNG_UHRZEIT.split(":").map(Number);
-  const wandNaiv = new Date(
-    Date.UTC(vorkommen.getUTCFullYear(), vorkommen.getUTCMonth(), vorkommen.getUTCDate(), stunde, minute) -
-      minutenVorher * 60_000,
-  );
+  const wandNaiv = new Date(wandStart - minutenVorher * 60_000);
   const zeit = `${String(wandNaiv.getUTCHours()).padStart(2, "0")}:${String(wandNaiv.getUTCMinutes()).padStart(2, "0")}`;
   return berlinWallToUTC(toISODatum(wandNaiv), zeit);
 }

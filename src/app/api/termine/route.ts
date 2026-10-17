@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getEreignisse } from "@/lib/kalender";
-import { berlinWallToUTC } from "@/lib/timezone";
+import { berlinZeitpunkt, datumOderNull, mitEingabepruefung, zeitpunktOderNull } from "@/lib/eingabe";
 import { remateralisiereNachAenderung } from "@/lib/reminder-materialize";
 
-function parseZeitpunkt(datum: unknown, zeit: unknown, ganztags: boolean): Date | null {
-  if (typeof datum !== "string" || !datum) return null;
-  if (ganztags) return new Date(datum);
-  if (typeof zeit !== "string" || !zeit) return null;
-  return berlinWallToUTC(datum, zeit);
+/** Ganztägig: 00:00 UTC des Datums; sonst Berlin-Ortszeit → UTC. Fehlt → null, ungültig → 400. */
+function parseZeitpunkt(datum: unknown, zeit: unknown, ganztags: boolean, feld: string): Date | null {
+  if (datum === undefined || datum === null || datum === "") return null;
+  return ganztags ? datumOderNull(datum, feld) : berlinZeitpunkt(datum, zeit, feld);
 }
 
-export async function GET(request: NextRequest) {
+export const GET = mitEingabepruefung(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const vonParam = searchParams.get("von");
   const bisParam = searchParams.get("bis");
-  const von = vonParam ? new Date(vonParam) : new Date();
-  const bis = bisParam ? new Date(bisParam) : new Date(von.getTime() + 30 * 86_400_000);
+  const von = zeitpunktOderNull(vonParam, "von") ?? new Date();
+  const bis = zeitpunktOderNull(bisParam, "bis") ?? new Date(von.getTime() + 30 * 86_400_000);
 
   const ereignisse = await getEreignisse(von, bis);
 
   return NextResponse.json(ereignisse);
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = mitEingabepruefung(async (request: NextRequest) => {
   const body = await request.json().catch(() => null);
   const titel = typeof body?.titel === "string" ? body.titel.trim() : "";
   const ganztags = Boolean(body?.ganztags);
-  const start = parseZeitpunkt(body?.datumStart, body?.zeitStart, ganztags);
-  const ende = body?.datumEnde ? parseZeitpunkt(body.datumEnde, body?.zeitEnde, ganztags) : null;
+  const start = parseZeitpunkt(body?.datumStart, body?.zeitStart, ganztags, "Start");
+  const ende = body?.datumEnde ? parseZeitpunkt(body.datumEnde, body?.zeitEnde, ganztags, "Ende") : null;
   const betrifft = ["PARTNER_A", "PARTNER_B", "BEIDE"].includes(body?.betrifft) ? body.betrifft : "BEIDE";
   const rhythmus = ["KEINE", "WOECHENTLICH", "MONATLICH", "JAEHRLICH"].includes(body?.rhythmus)
     ? body.rhythmus
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
       farbe: typeof body?.farbe === "string" ? body.farbe : null,
       betrifft,
       rhythmus,
-      serienEnde: typeof body?.serienEnde === "string" && body.serienEnde ? new Date(body.serienEnde) : null,
+      serienEnde: datumOderNull(body?.serienEnde, "Serienende"),
       erinnerungen: { create: erinnerungen.map((minutenVorher) => ({ minutenVorher })) },
     },
   });
@@ -63,4 +62,4 @@ export async function POST(request: NextRequest) {
   await remateralisiereNachAenderung(termin.id);
 
   return NextResponse.json(termin, { status: 201 });
-}
+});

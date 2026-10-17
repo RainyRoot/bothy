@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/session";
+import { berlinHeuteAlsDatum } from "@/lib/timezone";
 
 const MONATSSTART_NOTIZ = "Monatsstart";
 
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Keine Einträge übergeben" }, { status: 400 });
   }
 
-  const datum = new Date();
+  const datum = berlinHeuteAlsDatum();
   const daten = eintraege
     .filter(
       (e: unknown): e is { topfId: string; betragCent: number } =>

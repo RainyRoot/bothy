@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { remateralisiereTodoNachAenderung } from "@/lib/todo-materialize";
+import { datumOderNull, mitEingabepruefung } from "@/lib/eingabe";
 
 const PRIORITAETEN = ["NIEDRIG", "NORMAL", "HOCH"] as const;
 const BETRIFFT_WERTE = ["PARTNER_A", "PARTNER_B", "BEIDE"] as const;
@@ -13,12 +14,12 @@ export async function GET() {
   return NextResponse.json(todos);
 }
 
-export async function POST(request: NextRequest) {
+export const POST = mitEingabepruefung(async (request: NextRequest) => {
   const body = await request.json().catch(() => null);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   const prioritaet = PRIORITAETEN.includes(body?.prioritaet) ? body.prioritaet : "NORMAL";
   const betrifft = BETRIFFT_WERTE.includes(body?.betrifft) ? body.betrifft : "BEIDE";
-  const faelligkeit = typeof body?.faelligkeit === "string" && body.faelligkeit ? new Date(body.faelligkeit) : null;
+  const faelligkeit = datumOderNull(body?.faelligkeit, "Fälligkeit");
   const erinnerungen: number[] = Array.isArray(body?.erinnerungen)
     ? body.erinnerungen.filter((m: unknown): m is number => typeof m === "number")
     : [];
@@ -41,4 +42,4 @@ export async function POST(request: NextRequest) {
   await remateralisiereTodoNachAenderung(todo.id);
 
   return NextResponse.json(todo, { status: 201 });
-}
+});
