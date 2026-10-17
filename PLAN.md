@@ -1,7 +1,8 @@
 # PLAN.md — Bothy
 
 Gemeinsame App für zwei Nutzer: Kalender mit Erinnerungen, Geldtöpfe,
-Essensplan und Einkaufsliste, später eine Todo-Liste.
+Essensplan und Einkaufsliste, Todo-Liste, später ein gemeinsames
+Trainingslog fürs Gym.
 
 > *Bothy* — eine einfache, unverschlossene Hütte in den schottischen Bergen,
 > die sich Wanderer teilen. Ein kleiner gemeinsamer Unterschlupf für zwei.
@@ -232,7 +233,74 @@ model TodoReminderJob {
   @@unique([todoId, userId, dueAt])
   @@index([dueAt, sentAt])
 }
+
+// ---------- Training (Stufe 5) ----------
+// Pläne und Übungen sind gemeinsam, Sätze gehören je einer Person.
+// Rekorde und "letztes Mal" werden gerechnet, nie gespeichert —
+// gleiche Regel wie bei den Topfständen.
+
+model Uebung {
+  id         String       @id @default(cuid())
+  name       String       @unique          // "Bankdrücken", "Klimmzüge"
+  archiviert Boolean      @default(false)  // ausgeblendet, Historie bleibt
+  planEintraege PlanUebung[]
+  saetze     Satz[]
+  createdAt  DateTime     @default(now())
+}
+
+model Trainingsplan {
+  id         String       @id @default(cuid())
+  name       String                         // "Push", "Pull", "Beine"
+  sortierung Int          @default(0)
+  archiviert Boolean      @default(false)
+  uebungen   PlanUebung[]
+  trainings  Training[]
+}
+
+model PlanUebung {
+  id         String        @id @default(cuid())
+  planId     String
+  plan       Trainingsplan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  uebungId   String
+  uebung     Uebung        @relation(fields: [uebungId], references: [id])
+  sortierung Int
+  zielSaetze Int           @default(3)
+  zielWdh    Int?                           // Richtwert, nur Anzeige
+
+  @@index([planId, sortierung])
+}
+
+model Training {
+  id          String         @id            // vom Client erzeugte UUID, siehe 4.5
+  datum       DateTime       @db.Date       // Berlin-Kalendertag des Trainings
+  planId      String?                       // null = freies Training
+  plan        Trainingsplan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  gestartetAt DateTime                      // UTC
+  beendetAt   DateTime?                     // null = läuft noch
+  saetze      Satz[]
+  createdAt   DateTime       @default(now())
+
+  @@index([datum])
+}
+
+model Satz {
+  id             String   @id               // vom Client erzeugte UUID, siehe 4.5
+  trainingId     String
+  training       Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uebungId       String
+  uebung         Uebung   @relation(fields: [uebungId], references: [id])
+  gewichtGramm   Int      // 67,5 kg = 67500. NIEMALS Float. Bei Körpergewicht-Übungen: Zusatzgewicht, 0 erlaubt
+  wiederholungen Int
+  createdAt      DateTime @default(now())   // Reihenfolge der Sätze
+
+  @@index([userId, uebungId, createdAt])
+  @@index([trainingId])
+}
 ```
+
+`User` bekommt dafür die Rückrelation `saetze Satz[]`.
 
 ### Stände werden gerechnet, nicht gespeichert
 
@@ -350,6 +418,84 @@ Erledigte Todos bleiben durchgestrichen sichtbar (wie abgehakte
 Einkaufslisten-Einträge), bis sie gelöscht werden — keine Historie,
 kein `archiviert`-Feld nötig.
 
+### 4.5 Training
+
+Ziel: ein Satz ist so schnell erfasst wie eine Ausgabe im Topf. Der
+Großteil des Nutzens steckt in einem einzigen Feature: **die Werte vom
+letzten Mal stehen schon drin.**
+
+**Ablauf.** Plan wählen (oder freies Training) → Training läuft. Pro
+Übung steht oben „Letztes Mal: 3×8 @ 60 kg". Ein Satz wird mit einem
+Tap übernommen („wie letztes Mal") oder vorher angepasst (±2,5 kg,
+±1 Wdh., freie Eingabe). Übungen lassen sich während des Trainings
+ergänzen; eine neue Übung entsteht direkt aus dem Eingabefeld
+(Autovervollständigung über bestehende Namen), es gibt keine
+vorbefüllte Übungsdatenbank.
+
+**Gemeinsames Training.** Ein Training gehört niemandem, die Sätze
+schon (`Satz.userId`). „Training starten" tritt einem bereits
+laufenden Training vom selben Tag bei (`beendetAt IS NULL`), statt ein
+zweites anzulegen. Die Trainingsseite pollt alle 10 s wie die
+Töpfe-Liste — die Sätze der anderen Person erscheinen in einer zweiten
+Spalte. Starten beide gleichzeitig offline, entstehen zwei Trainings —
+akzeptiert, nicht weiter behandelt.
+
+**„Letztes Mal".** Die Sätze derselben Person und derselben Übung aus
+dem jüngsten *anderen* Training. Gerechnet per Query über den Index
+`[userId, uebungId, createdAt]`, nichts gespeichert.
+
+**Rekorde.** Ebenfalls gerechnet, nie gespeichert. Pro Person und
+Übung zählt der Satz mit dem höchsten geschätzten 1RM nach Epley:
+`gewichtGramm × (30 + wdh) / 30`, gerundet auf ganze Gramm, nur zum
+Vergleichen, nie angezeigt. Angezeigt wird der Satz selbst
+(„70 kg × 5"). Beim Speichern eines Satzes vergleicht der Server mit
+dem bisherigen Bestwert und meldet einen neuen Rekord zurück; der
+Client zeigt ihn an. Bei Körpergewicht-Übungen mit 0 g Zusatzgewicht
+zählen die Wiederholungen.
+
+**Fortschritt — ohne Charts** (Abschnitt 2 bleibt verbindlich,
+Entscheidung von Chris). Pro Übung und Person eine Textansicht:
+Rekord, bester Satz der letzten fünf Trainings als Liste, und ein
+Vergleich „vor 4 Wochen: 60 kg × 8 → heute: 67,5 kg × 8".
+
+**Wochen-Serie.** Auf der Gym-Startseite: Trainings diese Woche (je
+Person) und wie viele Wochen in Folge mindestens ein Training
+stattfand. Kein einstellbares Wochenziel in v1.
+
+**Offline ist Pflicht.** Gyms liegen oft im Keller ohne Netz. Anders
+als bei der Einkaufsliste müssen hier *neue Datensätze* offline
+entstehen, nicht nur Häkchen:
+
+- `Training.id` und `Satz.id` erzeugt der Client (`crypto.randomUUID()`).
+  Die API speichert per Upsert auf diese ID — ein mehrfach gesendeter
+  Satz landet trotzdem genau einmal in der DB. Das ist die
+  Idempotenz-Garantie, analog zum Unique-Constraint beim Materialisierer.
+- Beim Start lädt die Trainingsseite in **einem** Request alles, was
+  sie braucht (Plan, Übungen, „letztes Mal", Rekorde) und hält es im
+  Client. Danach braucht das Loggen kein Netz mehr.
+- Neue Sätze landen sofort in einer Outbox (`localStorage`, wie bei der
+  Einkaufsliste — siehe Entscheidung 2026-08-26) und werden beim
+  `online`-Event sowie alle 10 s erneut versucht. Rekord-Meldungen
+  kommen offline erst nach dem Sync.
+- Ein Satz lässt sich löschen oder korrigieren, solange das Training
+  läuft — auch offline (Löschen/Ändern geht ebenfalls über die Outbox).
+- Der Service Worker bekommt für Seitenaufrufe einen Netzwerk-Timeout
+  (ca. 3 s, danach Cache), sonst hängt jede Navigation bei schwachem
+  Netz.
+
+**Navigation.** Ein siebter Tab passt nicht in die Bottom-Nav. „Essen"
+und „Liste" werden zu einem Tab zusammengelegt (die Einkaufsliste ist
+vom Essensplan aus ohnehin über das Header-Icon erreichbar), der frei
+gewordene Platz geht an „Gym".
+
+**Trainingstage** sind einfach ein wöchentlicher Termin im Kalender —
+Erinnerungen kommen dadurch ohne eigenen Code über die bestehende
+Pipeline.
+
+**Bewusst nicht in Stufe 5:** Charts, Körpergewicht, Pausentimer,
+Cardio (Zeit/Distanz), RPE, Supersätze/Dropsets, automatische
+Progression, Übungsbilder oder -anleitungen. Ideen dazu → Backlog.
+
 ---
 
 ## 5. Stufen
@@ -413,6 +559,25 @@ wie beim Kalender. Siehe 4.4 für die Mechanik.
 - Priorität ist auf einen Blick an der Farbe erkennbar, ohne die Karte zu öffnen
 - Erledigtes bleibt bis zum Löschen sichtbar (durchgestrichen), verschwindet nicht automatisch
 
+### Stufe 5 — Training
+
+Gemeinsame Trainingspläne, Sätze je Person, „letztes Mal" vorbelegt,
+Rekorde, Fortschritt als Text, Wochen-Serie, voll offline-fähig.
+Siehe 4.5 für die Mechanik.
+
+**Vorab, wie bei Stufe 0:** zuerst den Offline-Weg beweisen (Training
+im Flugmodus anlegen, Sätze loggen, Netz an, Sync), *bevor* die
+Oberfläche ausgebaut wird. Wenn das auf den Handys nicht sauber läuft,
+ändert sich der Plan für diese Stufe.
+
+**Definition of Done**
+- Ein Satz mit den Werten vom letzten Mal ist auf dem Handy mit **einem Tap** gespeichert, ein angepasster Satz in unter 5 Sekunden
+- Ein komplettes Training im Flugmodus geloggt → nach dem Wiederverbinden sind alle Sätze **genau einmal** in der DB, auch wenn der Sync mehrfach läuft
+- Beide loggen auf zwei Handys im selben Training, die Sätze der anderen Person sind nach spätestens 15 s sichtbar
+- Ein neuer Rekord wird beim Speichern erkannt und angezeigt
+- Pro Übung sind Rekord und der Vergleich „vor 4 Wochen → heute" sichtbar, ohne Chart
+- 67,5 kg gehen als `67500` in die DB und kommen als „67,5 kg" zurück
+
 ---
 
 ## 6. Bekannte Fallen
@@ -422,6 +587,8 @@ wie beim Kalender. Siehe 4.4 für die Mechanik.
 | Service Worker brauchen einen secure context — `192.168.x.x` reicht **nicht** | Echtes Zertifikat, auch lokal (Tailscale oder Caddy DNS-01). Self-signed hilft auf Android nicht. |
 | Samsung One UI legt Apps schlafen → Push kommt verspätet oder nie | Beim Setup einmalig Akku-Optimierung für den Browser deaktivieren. In die Setup-Anleitung schreiben. |
 | Beträge als Float | Ausnahmslos Integer-Cent. Formatierung nur in der Anzeige. |
+| Trainingsgewichte als Float | Ausnahmslos Integer-Gramm (`67500` = 67,5 kg). Komma-Eingabe wird wie bei `parseEuroToCent` geparst. |
+| Doppelte Sätze nach Offline-Sync | Client-erzeugte UUID als Primärschlüssel + Upsert. Nie serverseitig neue IDs für Outbox-Einträge vergeben. |
 | Ganztägige Termine als Timestamp | `@db.Date`, oder 00:00 UTC. Sonst springen Geburtstage in der Sommerzeit einen Tag zurück. |
 | Zeitzonen | Speichern in UTC, Anzeige in `Europe/Berlin`. Keine lokalen Zeiten in der DB. |
 | Doppelte Pushes nach Neustart | `@@unique([terminId, userId, dueAt])` + `sentAt`-Flag. |

@@ -12,13 +12,20 @@ Todo-Liste** ist neu dazugekommen und nur per curl getestet, noch
 nicht im Browser. Sonst offen: was echte Geräte/Zeit braucht
 (Drei-Tage-Handy-DoD aus Stufe 0, Zwei-Geräte-Gleichzeitigkeitstest aus
 Stufe 1), dazu Docker Compose (auf diesem Rechner nicht testbar).
-**Letzte Aktualisierung:** 2026-08-27
+Neu: Code-Review vom 2026-10-16 hat mehrere echte Bugs gefunden (v.a.
+Zeitzonen/Erinnerungen, siehe „Bekannte Bugs"), und **Stufe 5 —
+Training** ist in PLAN.md spezifiziert, noch nicht gebaut.
+**Letzte Aktualisierung:** 2026-10-17
 **Branch:** `dev`
 
 ---
 
 ## Nächster Schritt
 
+0. **Bugs aus dem Review fixen, zuerst B1–B5** (siehe „Bekannte Bugs"
+   unten) — sie entscheiden, ob Erinnerungen auf den Handys überhaupt
+   stimmen und ob das NAS-Deployment startet. Danach die Punkte unten.
+   **Stufe 5 erst nach den Geräte-Verifikationen anfangen.**
 1. **Stufe 4 — Todo-Liste im Browser anschauen** (Chris): `/todos`
    durchklicken, Quick-Add, „mehr"-Ausklapper (Priorität/Fälligkeit/
    Erinnerung/Zuweisung), Abhaken, Löschen. Die Erinnerungs-Pipeline
@@ -37,6 +44,24 @@ Stufe 1), dazu Docker Compose (auf diesem Rechner nicht testbar).
 
 Danach ist inhaltlich nichts mehr offen aus PLAN.md 5 außer den
 Geräte-Verifikationen selbst.
+
+---
+
+## Bekannte Bugs (Review 2026-10-16)
+
+Gefunden beim Durchlesen des gesamten Codes, noch nicht gefixt.
+
+- **B1** Wöchentliche/monatliche/jährliche Termine mit Uhrzeit verschieben sich bei der Zeitumstellung um eine Stunde — `expandiereTermin` rechnet in UTC (+7×24h bzw. UTC-Stunde bleibt). Fix: in Berlin-Wandzeit expandieren, dann `berlinWallToUTC`.
+- **B2** Erinnerungen für ganztägige Termine und Todos kommen nachts um 1–2 Uhr (00:00 UTC − Vorlauf). Fix: auf feste Berlin-Uhrzeit verankern (z.B. 08:00).
+- **B3** Heutige ganztägige Termine verschwinden nach ca. 02:00 aus Agenda und Home-Kachel (`getEreignisse(new Date(), …)`). Fix: ab Berlin-Tagesbeginn abfragen.
+- **B4** Neuer Termin/Todo mit Erinnerung, deren `dueAt` schon vorbei ist, feuert sofort. Fix: beim Materialisieren `dueAt < jetzt − Kulanz` überspringen.
+- **B5** Docker-Image führt keine Migrationen aus (`prisma` ist devDependency, nicht im Standalone-Output). Fix: `prisma migrate deploy` vor dem Start (Entrypoint oder eigener Compose-Service).
+- **B6** Offline-Banner der Einkaufsliste bleibt hängen, wenn ein gequeueter Toggle auf ein nicht mehr existierendes Item zeigt (404 bleibt in der Queue). Fix: 404 verwerfen.
+- **B7** Manifest hat nur ein SVG-Icon — Android will PNG 192/512 (+ maskable) für echte Installation, das Notification-Badge muss ein einfarbiges PNG sein.
+- Kleiner: `notificationclick` vergleicht volle URL mit relativem Pfad (öffnet immer neues Fenster); Termin-Push ohne Uhrzeit/URL; Buchungen zwischen 00–02 Uhr landen auf dem Vortag (`new Date()` in `@db.Date`); Materialisierer-03:00 in Server-Ortszeit; Monatsraster sortiert nach UTC-Tag; Todo-Liste sortiert sich clientseitig nicht neu; Text-Edits/neue Artikel der Einkaufsliste scheitern offline still; ungültige Datumsstrings → 500 statt 400; jeder Test-Push hinterlässt eine archivierte `Termin`-Zeile.
+- Fehlt laut PLAN.md: Topf bearbeiten (UI), Buchung/Umbuchung löschen, archivierte Töpfe ansehen, Adminseite für Zustellfehler (PLAN.md 7), Backup-Service in Compose (PLAN.md 7).
+
+---
 
 **Vorher prüfen, ob die lokale Postgres noch läuft** (sie ist kein
 Windows-Dienst, siehe unten): `curl http://localhost:3000` — falls
@@ -93,6 +118,13 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] **Per curl verifiziert:** Todo mit Fälligkeit morgen + zwei Erinnerungen (0/1440 Min) erzeugt korrekt zwei `TodoReminderJob`-Zeilen nur für die zugewiesene Person; einer davon war sofort fällig und wurde **tatsächlich als Push zugestellt** (unbeabsichtigt beim Testen, siehe Session-Log) — echte Zustellung damit bereits bestätigt, nicht nur die Pipeline bis zur DB. `erledigt=true` löscht offene Jobs korrekt, Löschen kaskadiert `TodoErinnerung`+`TodoReminderJob` sauber weg
   - [x] Bearbeiten nachgezogen (Chris' Feedback) — Tippen auf den Text öffnet ein Inline-Formular, Fälligkeit lässt sich auch wieder auf leer setzen (löscht offene Jobs korrekt mit)
   - [ ] Noch nicht im Browser angeschaut
+- [ ] **Stufe 5 — Training** (spezifiziert in PLAN.md 3/4.5/5, noch nicht gebaut)
+  - [ ] Offline-Beweis zuerst: Training im Flugmodus anlegen, Sätze loggen, Sync ohne Duplikate
+  - [ ] Schema + Migration (`Uebung`, `Trainingsplan`, `PlanUebung`, `Training`, `Satz`)
+  - [ ] Pläne verwalten, Training starten/beitreten, Satz-Erfassung mit „letztes Mal"
+  - [ ] Rekorde, Fortschritt als Text, Wochen-Serie
+  - [ ] Bottom-Nav: Essen+Liste zusammenlegen, Gym-Tab
+  - [ ] **DoD:** siehe PLAN.md 5, auf zwei Handys im Gym
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
 
@@ -131,6 +163,12 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-08-27 | Neue **Stufe 4 — Todo-Liste** in PLAN.md aufgenommen (Priorität als feste Farbstufen, Erinnerungen wie Kalender aber nur tagesbasiert, keine Wiederholung, `betrifft`-Zuweisung wie Termine) | Chris' Wunsch; explizit als neue Stufe statt Backlog, da mit eigenem Schema/Erinnerungs-Pipeline vom Umfang vergleichbar mit Stufe 3 |
 | 2026-08-27 | Todo-Erinnerungen über eigene `TodoReminderJob`-Tabelle, nicht ein generisches `ReminderJob` mit optionalem `terminId`/`todoId` | Korrektur eines eigenen Fehlers, noch vor dem Bauen bemerkt: Postgres behandelt `NULL` in einem Unique-Constraint als nie gleich — zwei Termin-Jobs mit `todoId = NULL` wären vom Unique-Index nicht mehr als Duplikat erkannt, das hätte die Idempotenz des Materialisierers gebrochen (PLAN.md 4.1). Zwei einfache Tabellen sind hier robuster als ein cleverer generischer Ansatz |
 | 2026-08-27 | Vorlaufzeiten für Erinnerungen um 2 und 3 Tage vorher erweitert (Termine *und* Todos) | Chris' Wunsch, im Zuge der Todo-Liste-Spec gleich für beide Features mit erledigt |
+| 2026-10-17 | Neue **Stufe 5 — Training** in PLAN.md (gemeinsames Gym-Log) | Chris' Wunsch; wie die Todo-Liste als formale Stufe statt Backlog, da eigenes Schema + Offline-Mechanik |
+| 2026-10-17 | Training: Fortschritt **ohne Charts** (Rekord, Liste, „vor 4 Wochen → heute") | Chris' Entscheidung — PLAN.md 2 (keine Charts) bleibt ohne Ausnahme |
+| 2026-10-17 | Training: **gemeinsame Pläne/Übungen**, Sätze je Person | Chris' Entscheidung — ihr trainiert dieselben Pläne |
+| 2026-10-17 | Training: **kein Körpergewicht, kein Pausentimer** in Stufe 5 | Chris' Entscheidung — Fokus aufs Loggen; Pausentimer ginge in einer PWA ohnehin nur bei offener App zuverlässig |
+| 2026-10-17 | Training: Client-erzeugte UUIDs als Primärschlüssel für `Training`/`Satz`, Upsert | Offline-Sync muss idempotent sein — ein mehrfach gesendeter Satz darf nur einmal landen |
+| 2026-10-17 | Training: Gewichte als `Int` in Gramm | gleiche Regel wie Cent, 67,5 kg = `67500` |
 
 ---
 
@@ -154,6 +192,22 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 - Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
+- Ideen aus dem Review 2026-10-16:
+  - App-Shortcuts im Manifest (Lang-Tippen aufs Icon → „Ausgabe erfassen", „Artikel auf die Liste", „Training starten")
+  - „Heute"-Startseite: heutige Termine, heutiges Essen, fällige Todos, Trainingstag
+  - Morgen-Zusammenfassung als Push um ~08:00
+  - Wischen zum Abhaken/Löschen mit „Rückgängig"-Snackbar statt Text-Buttons
+  - Push an Partner bei relevanten Ereignissen (Todo zugewiesen, Einkauf erledigt, Sparziel 50 %/100 %, neuer Trainingsrekord), einzeln abschaltbar
+  - Kleiner Aktivitäts-Feed („Mara hat 23,40 € aus Einkaufsgeld gebucht")
+  - „Ich kümmer mich"-Knopf bei Todos
+  - Autovervollständigung aus der Historie (Mahlzeiten-Titel übernehmen ihre Zutaten, Listenartikel) — keine Rezept-Entität, mit PLAN.md 2 abgleichen
+  - Stamm-Artikel für die Einkaufsliste, Sortierung nach Supermarkt-Bereich
+  - Buchungsvorlagen als Ein-Tap-Chips („Tanken 50 €")
+  - Geburtstags-Countdown mit Geschenkidee-Notiz
+  - Einstellungsseite: Passwort ändern, Push-Status/Test-Button, Logout
+  - Einkaufsliste neu erzeugen *zusammenführen* statt überschreiben; Einkaufsliste pollen wie die Töpfe
+  - `themeColor` für Hell/Dunkel getrennt; alte SW-Caches beim `activate` aufräumen
+- Training, bewusst nicht in Stufe 5: Charts, Körpergewicht, Pausentimer, Cardio, RPE, Supersätze, automatische Progression
 
 ---
 
@@ -161,6 +215,25 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-10-16/17 — Code-Review, Stufe 5 (Training) spezifiziert
+Chris wollte ein Review mit Feedback/QOL-Ideen. Gesamten Code gelesen
+(Schema, alle API-Routen, UI, Service Worker, Docker). Ergebnis: siehe
+„Bekannte Bugs" — die wichtigsten sind Zeitzonen-Fehler in der
+Serien-Expansion (Zeitumstellung) und nächtliche Erinnerungen bei
+ganztägigen Terminen/Todos, dazu fehlende Migrationen im Docker-Image.
+Ideen ohne PLAN.md-Bezug landeten im Backlog.
+
+Danach Gym-Tracking gewünscht. Vier Rückfragen geklärt (siehe
+Entscheidungen): keine Charts, gemeinsame Pläne, kein Körpergewicht,
+kein Pausentimer. Als **Stufe 5** in PLAN.md 3/4.5/5/6 spezifiziert.
+Kernpunkte: „letztes Mal" vorbelegt, Rekorde gerechnet statt
+gespeichert, gemeinsames Training per Beitreten + Polling, und
+Offline-Fähigkeit über client-erzeugte UUIDs + Upsert (idempotenter
+Sync). Wie bei Stufe 0 zuerst der Offline-Beweis, dann die Oberfläche.
+
+**Kein Code geändert.** Nächste Instanz: Bugs B1–B5 fixen (siehe
+„Nächster Schritt"), Stufe 5 erst nach den Geräte-Verifikationen.
 
 ### 2026-08-27 (Fortsetzung 3) — Todo-Liste gebaut (Stufe 4)
 Direkt im Anschluss an die Spec gebaut, Chris wollte nicht erst eine
