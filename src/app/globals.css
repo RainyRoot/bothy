@@ -1,30 +1,36 @@
 @import "tailwindcss";
 
 /*
- * Bothy — warme Hütten-Palette statt des Test-Pinks (#ff1dce).
- * "Bothy": eine kleine, unverschlossene Schutzhütte in den Bergen, die sich
- * Wanderer teilen. Terracotta wie Laternenlicht, warmes Papier als Grund.
+ * Bothy in Rosa (Wunsch 2026-10-17: "mehr pink/girly") — ersetzt die
+ * Terracotta-Palette. Zartrosa Grund, Himbeer-Pink als Akzent, Pflaume
+ * statt Schwarz für Text. Alles läuft über diese Variablen; Feinjustierung
+ * also nur hier (plus Icon-PNGs, manifest.json, layout.tsx themeColor).
  */
 :root {
-  --background: #fbf6ef;
+  --background: #fff5f8;
+  --background-glow: #ffe1ec;
   --surface: #ffffff;
-  --surface-hover: #f4ecdf;
-  --foreground: #2b231c;
-  --muted: #8c7c6b;
-  --border: #e6dacb;
+  --surface-hover: #fde8f0;
+  --foreground: #3d1f2e;
+  --muted: #9c6f84;
+  --border: #f7d4e1;
 
-  --accent: #de5b2c;
-  --accent-hover: #c24a21;
+  /* Dunkel genug für weiße Schrift auf Buttons */
+  --accent: #d6327a;
+  --accent-2: #f06aa4;
+  --accent-hover: #bd2368;
   --accent-foreground: #ffffff;
-  --accent-soft: #fbe4d6;
+  --accent-soft: #fde0ec;
+  --shadow-tint: 214, 50, 122;
 
-  --danger: #c1443a;
-  --danger-soft: #f8e1de;
-  --success: #3f7d4e;
+  /* Fehler bewusst orange-rot, damit sie sich vom Pink abheben */
+  --danger: #d1460f;
+  --danger-soft: #fde6dc;
+  --success: #2f855a;
 
   /* Todo-Prioritätsstufen — feste Farben statt freier Farbwahl (siehe PLAN.md 4.4) */
-  --prio-niedrig: #6b8cae;
-  --prio-normal: #c9982f;
+  --prio-niedrig: #8a9be8;
+  --prio-normal: #e7a23b;
   --prio-hoch: var(--danger);
 }
 
@@ -51,24 +57,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #17130f;
-    --surface: #211b16;
-    --surface-hover: #2a231c;
-    --foreground: #f2e9df;
-    --muted: #a89686;
-    --border: #362d24;
+    --background: #1c1118;
+    --background-glow: #2e1626;
+    --surface: #27171f;
+    --surface-hover: #331e2a;
+    --foreground: #fbe8f0;
+    --muted: #c99ab0;
+    --border: #44283a;
 
-    --accent: #f3703b;
-    --accent-hover: #ff8952;
-    --accent-foreground: #1a1310;
-    --accent-soft: #402a1e;
+    --accent: #ff6fae;
+    --accent-2: #ffa3c9;
+    --accent-hover: #ff8cbf;
+    --accent-foreground: #2a0d1c;
+    --accent-soft: #4a2138;
+    --shadow-tint: 0, 0, 0;
 
-    --danger: #e2685b;
-    --danger-soft: #3b241f;
-    --success: #7fbb8b;
+    --danger: #ff8a5c;
+    --danger-soft: #40231a;
+    --success: #7fd1a0;
 
-    --prio-niedrig: #8fb0d1;
-    --prio-normal: #e0b354;
+    --prio-niedrig: #a5b4fc;
+    --prio-normal: #f5c26b;
     --prio-hoch: var(--danger);
   }
 }
@@ -79,7 +88,10 @@ html {
 }
 
 body {
-  background: var(--background);
+  /* zarter rosa Schimmer oben, darunter flach — im Dark Mode Pflaume */
+  background:
+    radial-gradient(120% 60% at 50% -10%, var(--background-glow), transparent 70%) no-repeat,
+    var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   overscroll-behavior-y: contain;
@@ -99,7 +111,12 @@ input[type="radio"] {
   @apply inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
 }
 @utility btn-primary {
-  @apply btn bg-accent text-accent-foreground shadow-sm hover:bg-accent-hover;
+  @apply btn text-accent-foreground shadow-sm;
+  background-image: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 4px 14px rgba(var(--shadow-tint), 0.25);
+  &:hover {
+    background-image: linear-gradient(135deg, var(--accent-hover), var(--accent));
+  }
 }
 @utility btn-secondary {
   @apply btn border border-border bg-surface text-foreground hover:bg-surface-hover;
@@ -124,7 +141,8 @@ input[type="radio"] {
   }
 
   .card {
-    @apply rounded-2xl border border-border bg-surface p-4 shadow-[0_1px_2px_rgba(43,35,28,0.05),0_1px_10px_rgba(43,35,28,0.04)];
+    @apply rounded-3xl border border-border bg-surface p-4;
+    box-shadow: 0 1px 2px rgba(var(--shadow-tint), 0.06), 0 4px 18px rgba(var(--shadow-tint), 0.07);
   }
 
   .field {

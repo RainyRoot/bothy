@@ -29,11 +29,11 @@ export default async function LoginPage() {
 
 function BothyMark() {
   return (
-    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#17130f]">
-      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="#f2e9df" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d6327a] to-[#f48bb8] shadow-lg shadow-pink-300/40">
+      <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="#ffffff" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <path d="M5 11.5 12 5l7 6.5" />
         <path d="M7 10.5v6.5a.75.75 0 0 0 .75.75h8.5a.75.75 0 0 0 .75-.75v-6.5" />
-        <rect x="10.5" y="13.5" width="3" height="3" rx="0.5" fill="#f3703b" stroke="none" />
+        <rect x="10.5" y="13.5" width="3" height="3" rx="0.5" fill="#ffe08a" stroke="none" />
       </svg>
     </div>
   );

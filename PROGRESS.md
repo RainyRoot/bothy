@@ -210,6 +210,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-10-17 | Einkaufsliste: `EinkaufslistenItem.manuell` (Migration `einkaufsliste_manuell`), Neu-Erzeugen führt zusammen | manuelle/umbenannte Artikel und Häkchen gingen beim Neu-Erzeugen verloren; ohne Feld nicht unterscheidbar |
 | 2026-10-17 | Passwort-Reset über **Name + Invite-Code** (`/passwort-vergessen`) | kein Mailversand vorhanden; der Invite-Code ist das gemeinsame Geheimnis, das es schon gibt |
 | 2026-10-17 | Bottom-Nav: Essensplan + Einkaufsliste in **einem** Tab „Essen" mit Umschalter | sechs Tabs waren zu eng (Review); macht Platz für den Gym-Tab aus Stufe 5 |
+| 2026-10-17 | Farbschema **rosa/girly** statt Terracotta: zartrosa Grund, Himbeer-Pink-Akzent (#d6327a, Verlauf auf Buttons), Pflaume für Text, Dark Mode in Pflaume-Pink; App-Icon pinker Verlauf mit gelbem Fensterlicht | Wunsch „mehr pink/girly“; alles über die CSS-Variablen in globals.css, Fehlerfarbe bewusst orange-rot, damit sie sich vom Pink abhebt |
 | 2026-10-17 | Stufe 5 vor den Geräte-Verifikationen gebaut | Chris' ausdrücklicher Wunsch („develop it"), entgegen der eigenen Notiz „erst nach den Geräte-Verifikationen" |
 | 2026-10-17 | Training: offline gestartetes Training **tritt beim Sync** einem inzwischen laufenden bei (Server gibt dessen ID zurück, Outbox stellt um) | sauberer als PLAN.md 4.5 verlangt („zwei Trainings — akzeptiert"); kostet nur die ohnehin nötige ID-Umstellung |
 | 2026-10-17 | Übungen bekommen ebenfalls eine Client-ID; gleicher Name (Groß/klein egal) → bestehende Übung | „neue Übung direkt aus dem Eingabefeld" muss offline gehen; doppelte Übungen durch Tippvarianten vermeiden |
@@ -224,7 +225,7 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 Beantwortet werden sie von Chris, nicht von einer Instanz allein.
 
 - Domain (erst nötig, falls/wenn Richtung Play Store — siehe Entscheidungen)
-- Farbschema/Icon: erster Entwurf steht (siehe Entscheidungen 2026-08-27), Chris' Feinjustierung nach Browser-Ansicht steht noch aus
+- Farbschema/Icon: jetzt rosa (siehe Entscheidungen 2026-10-17), Feinjustierung nach Ansicht auf dem Handy steht noch aus
 - Progressions-Hinweis im Training („alle Sätze haben das Ziel erreicht → nächstes Mal +2,5 kg?"): grenzt an „automatische Progression", ein Nicht-Ziel aus PLAN.md 4.5 — als reiner Hinweis vertretbar? Chris' Entscheidung
 
 ---
