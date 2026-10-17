@@ -226,4 +226,7 @@ model EinkaufslistenItem {
   text            String
   abgehakt        Boolean       @default(false)
   sortierung      Int           @default(0)
+  // Von Hand hinzugefügt oder umbenannt — "Neu aus Essensplan erzeugen"
+  // lässt solche Einträge stehen, statt sie mit der Liste neu zu bauen
+  manuell         Boolean       @default(false)
 }

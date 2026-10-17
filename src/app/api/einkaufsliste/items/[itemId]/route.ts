@@ -13,6 +13,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Text fehlt" }, { status: 400 });
     }
     data.text = text;
+    // Von Hand umbenannt: gehört jetzt dem Nutzer, Neu-Erzeugen lässt ihn stehen
+    data.manuell = true;
   }
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nichts zu ändern" }, { status: 400 });

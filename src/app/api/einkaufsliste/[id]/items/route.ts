@@ -21,7 +21,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
 
   const item = await prisma.einkaufslistenItem.create({
-    data: { einkaufslisteId: id, text, sortierung: (letztes?.sortierung ?? -1) + 1 },
+    data: {
+      einkaufslisteId: id,
+      text,
+      sortierung: (letztes?.sortierung ?? -1) + 1,
+      manuell: true,
+      // offline angelegt und schon abgehakt, bevor er synchronisiert wurde
+      abgehakt: body?.abgehakt === true,
+    },
   });
 
   return NextResponse.json(item, { status: 201 });

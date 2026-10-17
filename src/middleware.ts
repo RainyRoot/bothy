@@ -30,5 +30,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)"],
+  // manifest.json und sw.js müssen ohne Session erreichbar sein: Chrome holt
+  // das Manifest ohne Cookies, und ein Service-Worker-Skript darf nicht umleiten
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|webp)$).*)"],
 };

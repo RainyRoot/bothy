@@ -1,74 +1,92 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatCent, parseEuroToCent } from "@/lib/money";
 import { IconPlus } from "../icons";
+import { abarbeiten, einreihen, ladeQueue, mitAusstehenden, neueTempId, type Item } from "./offline-queue";
 
-type Item = { id: string; text: string; abgehakt: boolean; sortierung: number };
 type Liste = { id: string; woche: Date | string; items: Item[] } | null;
 type Topf = { id: string; name: string };
 
-const PENDING_KEY = "bothy_pending_item_toggles";
-
-function ladePending(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem(PENDING_KEY) ?? "{}");
-  } catch {
-    return {};
-  }
-}
-
-function speicherePending(pending: Record<string, boolean>) {
-  try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
-  } catch {
-    // localStorage nicht verfügbar (z.B. privater Modus) — Offline-Queue entfällt dann
-  }
-}
-
-async function sendeToggle(itemId: string, abgehakt: boolean): Promise<boolean> {
-  try {
-    const res = await fetch(`/api/einkaufsliste/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ abgehakt }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
+// Wie bei den Töpfen: zwei Leute im Supermarkt sollen die Häkchen des
+// anderen sehen, ohne neu zu laden
+const POLL_INTERVAL_MS = 10_000;
 
 export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string; initial: Liste; toepfe: Topf[] }) {
   const [liste, setListe] = useState(initial);
   const [erzeugeBusy, setErzeugeBusy] = useState(false);
   const [offline, setOffline] = useState(false);
   const [bearbeiteItemId, setBearbeiteItemId] = useState<string | null>(null);
+  // Zählt lokale Änderungen hoch — ein Poll, der währenddessen lief, ist veraltet
+  const aenderungen = useRef(0);
+
+  const aktualisiereOffline = useCallback(() => {
+    setOffline(ladeQueue().length > 0 || !navigator.onLine);
+  }, []);
+
+  const synchronisieren = useCallback(async () => {
+    await abarbeiten((tempId, item) => {
+      setListe((prev) =>
+        prev ? { ...prev, items: prev.items.map((i) => (i.id === tempId ? { ...i, id: item.id } : i)) } : prev,
+      );
+      setBearbeiteItemId((id) => (id === tempId ? item.id : id));
+    });
+    aktualisiereOffline();
+  }, [aktualisiereOffline]);
+
+  const neuLaden = useCallback(async () => {
+    const stand = aenderungen.current;
+    try {
+      const res = await fetch(`/api/einkaufsliste?woche=${woche}`, { cache: "no-store" });
+      if (!res.ok || stand !== aenderungen.current) return;
+      const frisch: Liste = await res.json();
+      if (stand !== aenderungen.current) return;
+      setListe(frisch ? { ...frisch, items: mitAusstehenden(frisch.id, frisch.items) } : frisch);
+    } catch {
+      // offline — nächster Poll versucht es wieder
+    }
+  }, [woche]);
 
   useEffect(() => {
-    async function flushPending() {
-      const pending = ladePending();
-      const ids = Object.keys(pending);
-      if (ids.length === 0) return;
-      for (const id of ids) {
-        const ok = await sendeToggle(id, pending[id]);
-        if (ok) {
-          delete pending[id];
-          speicherePending(pending);
-        }
-      }
-      setOffline(Object.keys(ladePending()).length > 0);
+    async function syncUndLaden() {
+      await synchronisieren();
+      await neuLaden();
+    }
+    function beiSichtbar() {
+      if (document.visibilityState === "visible") void syncUndLaden();
     }
 
-    flushPending();
-    window.addEventListener("online", flushPending);
-    setOffline(Object.keys(ladePending()).length > 0 || !navigator.onLine);
-    return () => window.removeEventListener("online", flushPending);
-  }, []);
+    void synchronisieren();
+    aktualisiereOffline();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") void syncUndLaden();
+    }, POLL_INTERVAL_MS);
+    window.addEventListener("online", syncUndLaden);
+    window.addEventListener("offline", aktualisiereOffline);
+    document.addEventListener("visibilitychange", beiSichtbar);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("online", syncUndLaden);
+      window.removeEventListener("offline", aktualisiereOffline);
+      document.removeEventListener("visibilitychange", beiSichtbar);
+    };
+  }, [synchronisieren, neuLaden, aktualisiereOffline]);
+
+  /** Lokal sofort anzeigen, in die Queue legen, Synchronisierung anstoßen. */
+  function aendern(aktualisierung: (items: Item[]) => Item[], op: Parameters<typeof einreihen>[0]) {
+    aenderungen.current++;
+    setListe((prev) => (prev ? { ...prev, items: aktualisierung(prev.items) } : prev));
+    einreihen(op);
+    aktualisiereOffline();
+    void synchronisieren();
+  }
 
   async function erzeugen() {
     setErzeugeBusy(true);
     try {
+      // Wartende Änderungen erst loswerden — nach dem Neu-Erzeugen passen ihre IDs nicht mehr
+      await synchronisieren();
+      aenderungen.current++;
       const res = await fetch("/api/einkaufsliste/generieren", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,59 +95,44 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
         // Aktion soll immer wirklich neu aus dem aktuellen Essensplan bauen.
         body: JSON.stringify({ woche, force: true }),
       });
-      setListe(await res.json());
+      if (res.ok) {
+        const frisch = await res.json();
+        setListe({ ...frisch, items: mitAusstehenden(frisch.id, frisch.items) });
+      }
+    } catch {
+      // offline — Neu-Erzeugen geht nur mit Netz
     } finally {
       setErzeugeBusy(false);
     }
   }
 
-  async function toggle(item: Item) {
-    const neu = !item.abgehakt;
-    setListe((prev) =>
-      prev ? { ...prev, items: prev.items.map((i) => (i.id === item.id ? { ...i, abgehakt: neu } : i)) } : prev,
+  function toggle(item: Item) {
+    const abgehakt = !item.abgehakt;
+    aendern(
+      (items) => items.map((i) => (i.id === item.id ? { ...i, abgehakt } : i)),
+      { typ: "patch", itemId: item.id, data: { abgehakt } },
     );
-
-    const ok = await sendeToggle(item.id, neu);
-    if (!ok) {
-      const pending = ladePending();
-      pending[item.id] = neu;
-      speicherePending(pending);
-      setOffline(true);
-    } else {
-      const pending = ladePending();
-      if (item.id in pending) {
-        delete pending[item.id];
-        speicherePending(pending);
-      }
-    }
   }
 
-  async function speichereText(item: Item, text: string) {
-    setListe((prev) => (prev ? { ...prev, items: prev.items.map((i) => (i.id === item.id ? { ...i, text } : i)) } : prev));
+  function speichereText(item: Item, text: string) {
     setBearbeiteItemId(null);
-    await fetch(`/api/einkaufsliste/items/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
+    aendern(
+      (items) => items.map((i) => (i.id === item.id ? { ...i, text } : i)),
+      { typ: "patch", itemId: item.id, data: { text } },
+    );
   }
 
-  async function loeschenItem(id: string) {
-    setListe((prev) => (prev ? { ...prev, items: prev.items.filter((i) => i.id !== id) } : prev));
-    await fetch(`/api/einkaufsliste/items/${id}`, { method: "DELETE" });
+  function loeschenItem(id: string) {
+    aendern((items) => items.filter((i) => i.id !== id), { typ: "delete", itemId: id });
   }
 
-  async function artikelHinzufuegen(text: string) {
+  function artikelHinzufuegen(text: string) {
     if (!liste) return;
-    const res = await fetch(`/api/einkaufsliste/${liste.id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-    if (res.ok) {
-      const item = await res.json();
-      setListe((prev) => (prev ? { ...prev, items: [...prev.items, item] } : prev));
-    }
+    const tempId = neueTempId();
+    aendern(
+      (items) => [...items, { id: tempId, text, abgehakt: false, sortierung: Number.MAX_SAFE_INTEGER }],
+      { typ: "add", tempId, listeId: liste.id, text, abgehakt: false },
+    );
   }
 
   if (!liste) {
@@ -147,7 +150,7 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
     <div className="flex flex-col gap-6">
       {offline && (
         <p className="rounded-xl border border-accent/30 bg-accent-soft px-3.5 py-2.5 text-xs text-accent">
-          Offline — Häkchen werden gespeichert und synchronisiert, sobald wieder Netz da ist.
+          Offline — Änderungen werden gespeichert und synchronisiert, sobald wieder Netz da ist.
         </p>
       )}
 
@@ -178,7 +181,9 @@ export function EinkaufslisteClient({ woche, initial, toepfe }: { woche: string;
       <button onClick={erzeugen} disabled={erzeugeBusy} className="btn-secondary self-start">
         {erzeugeBusy ? "…" : "Neu aus Essensplan erzeugen"}
       </button>
-      <p className="-mt-4 text-xs text-muted">Baut die Liste komplett neu — bestehende Häkchen und manuell hinzugefügte Artikel gehen dabei verloren.</p>
+      <p className="-mt-4 text-xs text-muted">
+        Übernimmt Änderungen am Essensplan. Selbst hinzugefügte oder umbenannte Artikel bleiben, Häkchen auch.
+      </p>
 
       {toepfe.length > 0 && <EinkaufBuchen listeId={liste.id} toepfe={toepfe} />}
     </div>
@@ -252,18 +257,12 @@ function BearbeitenItemForm({
 
 function NeuerArtikelForm({ onAdd }: { onAdd: (text: string) => void }) {
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
 
-  async function submit(event: React.FormEvent) {
+  function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!text.trim()) return;
-    setBusy(true);
-    try {
-      await onAdd(text.trim());
-      setText("");
-    } finally {
-      setBusy(false);
-    }
+    onAdd(text.trim());
+    setText("");
   }
 
   return (
@@ -274,7 +273,7 @@ function NeuerArtikelForm({ onAdd }: { onAdd: (text: string) => void }) {
         onChange={(e) => setText(e.target.value)}
         className="input flex-1"
       />
-      <button type="submit" disabled={busy} className="btn-secondary shrink-0 !px-3.5">
+      <button type="submit" className="btn-secondary shrink-0 !px-3.5">
         <IconPlus className="h-4 w-4" />
       </button>
     </form>
