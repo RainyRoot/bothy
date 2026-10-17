@@ -5,7 +5,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { berlinWallParts, formatBerlinDatum } from "@/lib/timezone";
 import { formatSatz, type SatzWerte } from "@/lib/training-shared";
-import { abarbeiten, ausstehend, einreihen, ladeOutbox, neueId, type Rueckmeldungen } from "./outbox";
+import {
+  abarbeiten,
+  ausstehend,
+  einreihen,
+  erneutVersuchen,
+  fehlgeschlageneVerwerfen,
+  ladeFehlgeschlagen,
+  ladeOutbox,
+  neueId,
+  type Fehlgeschlagen,
+  type Op,
+  type Rueckmeldungen,
+} from "./outbox";
 import { UebungKarte } from "./UebungKarte";
 import { schluessel, type GymDaten, type SatzLokal, type TrainingLokal, type UebungInfo } from "./typen";
 
@@ -66,6 +78,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
   const [rekorde, setRekorde] = useState(daten.rekorde);
   const [meldung, setMeldung] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [fehlgeschlagen, setFehlgeschlagen] = useState<Fehlgeschlagen[]>([]);
 
   const ich = daten.ich;
   const partner = daten.personen.find((p) => p.id !== ich) ?? null;
@@ -110,6 +123,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
       }
     }
     setOffline(ladeOutbox().length > 0 || !navigator.onLine);
+    setFehlgeschlagen(ladeFehlgeschlagen());
     setBereit(true);
   }, [daten, ich]);
 
@@ -157,6 +171,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
       rekord: (id) => rueckRef.current.rekord(id),
     });
     setOffline(ladeOutbox().length > 0 || !navigator.onLine);
+    setFehlgeschlagen(ladeFehlgeschlagen());
   }, []);
 
   const trainingId = training?.id ?? null;
@@ -306,6 +321,24 @@ export function GymClient({ daten }: { daten: GymDaten }) {
 
   if (!bereit) return null;
 
+  const fehlerHinweis = fehlgeschlagen.length > 0 && (
+    <FehlerHinweis
+      liste={fehlgeschlagen}
+      uebungen={uebungen}
+      onErneut={() => {
+        erneutVersuchen();
+        setFehlgeschlagen([]);
+        aendern();
+      }}
+      onVerwerfen={() => {
+        if (!confirm("Diese Einträge endgültig verwerfen?")) return;
+        fehlgeschlageneVerwerfen();
+        setFehlgeschlagen([]);
+        aenderungen.current++;
+      }}
+    />
+  );
+
   const offlineHinweis = offline && (
     <p className="rounded-xl border border-accent/30 bg-accent-soft px-3.5 py-2.5 text-xs text-accent">
       Offline — alles wird auf dem Handy gespeichert und synchronisiert, sobald wieder Netz da ist.
@@ -316,6 +349,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
     return (
       <>
         {offlineHinweis}
+        {fehlerHinweis}
         <Uebersicht daten={daten} partnerName={partner?.name ?? null} onStarten={starten} />
       </>
     );
@@ -351,6 +385,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
       </div>
 
       {offlineHinweis}
+      {fehlerHinweis}
 
       {uebungIds.length === 0 && (
         <p className="card text-center text-sm text-muted">Noch keine Übung — unten eine hinzufügen.</p>
@@ -449,6 +484,57 @@ function Uebersicht({
         <Link href="/gym/uebungen" className="chip">
           Übungen & Fortschritt
         </Link>
+      </div>
+    </div>
+  );
+}
+
+function beschreibe(op: Op, uebungen: UebungInfo[]): string {
+  switch (op.typ) {
+    case "satz":
+      return `${uebungen.find((u) => u.id === op.uebungId)?.name ?? "Satz"}: ${formatSatz(op)}`;
+    case "uebung":
+      return `Übung „${op.name}“ anlegen`;
+    case "training":
+      return "Training starten";
+    case "satzLoeschen":
+      return "Satz löschen";
+    case "beenden":
+      return "Training beenden";
+  }
+}
+
+/** Vom Server abgelehnte Einträge — sichtbar statt still verworfen. */
+function FehlerHinweis({
+  liste,
+  uebungen,
+  onErneut,
+  onVerwerfen,
+}: {
+  liste: Fehlgeschlagen[];
+  uebungen: UebungInfo[];
+  onErneut: () => void;
+  onVerwerfen: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-danger/30 px-3.5 py-3 text-sm">
+      <p className="font-medium text-danger">
+        {liste.length === 1 ? "1 Eintrag konnte" : `${liste.length} Einträge konnten`} nicht gespeichert werden
+      </p>
+      <ul className="flex flex-col gap-0.5 text-xs">
+        {liste.map((f) => (
+          <li key={f.op.opId}>
+            {beschreibe(f.op, uebungen)} <span className="text-muted">— {f.fehler}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <button onClick={onErneut} className="btn-secondary btn-sm">
+          Nochmal versuchen
+        </button>
+        <button onClick={onVerwerfen} className="btn-danger-ghost">
+          Verwerfen
+        </button>
       </div>
     </div>
   );

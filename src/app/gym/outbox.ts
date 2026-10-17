@@ -27,6 +27,11 @@ type OpDaten =
 export type Op = OpDaten & { opId: string };
 
 const KEY = "bothy_gym_outbox";
+// Vom Server abgelehnte Ops. Anders als bei der Einkaufsliste wird hier
+// nichts still verworfen — Trainingsdaten sind nicht wiederherstellbar.
+const FEHL_KEY = "bothy_gym_fehlgeschlagen";
+
+export type Fehlgeschlagen = { op: Op; fehler: string };
 
 export function ladeOutbox(): Op[] {
   try {
@@ -44,6 +49,34 @@ function speichere(q: Op[]) {
   }
 }
 
+export function ladeFehlgeschlagen(): Fehlgeschlagen[] {
+  try {
+    return JSON.parse(localStorage.getItem(FEHL_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function speichereFehlgeschlagen(liste: Fehlgeschlagen[]) {
+  try {
+    localStorage.setItem(FEHL_KEY, JSON.stringify(liste));
+  } catch {
+    // ohne localStorage gibt es auch keine Outbox
+  }
+}
+
+/** Alle abgelehnten Ops zurück an den Anfang der Outbox, in ursprünglicher Reihenfolge (Übung vor ihren Sätzen). */
+export function erneutVersuchen(): void {
+  const fehl = ladeFehlgeschlagen();
+  if (fehl.length === 0) return;
+  speichere([...fehl.map((f) => f.op), ...ladeOutbox()]);
+  speichereFehlgeschlagen([]);
+}
+
+export function fehlgeschlageneVerwerfen(): void {
+  speichereFehlgeschlagen([]);
+}
+
 export function neueId(): string {
   return crypto.randomUUID();
 }
@@ -56,7 +89,7 @@ export function einreihen(op: OpDaten): void {
 export function ausstehend(): { saetze: Map<string, SatzOp>; geloescht: Set<string> } {
   const saetze = new Map<string, SatzOp>();
   const geloescht = new Set<string>();
-  for (const op of ladeOutbox()) {
+  for (const op of [...ladeFehlgeschlagen().map((f) => f.op), ...ladeOutbox()]) {
     if (op.typ === "satz") saetze.set(op.id, op);
     if (op.typ === "satzLoeschen") {
       saetze.delete(op.id);
@@ -71,7 +104,10 @@ export type Rueckmeldungen = {
   rekord: (satzId: string) => void;
 };
 
-type Ergebnis = { status: "ok"; json: Record<string, unknown> | null } | { status: "verwerfen" } | { status: "spaeter" };
+type Ergebnis =
+  | { status: "ok"; json: Record<string, unknown> | null }
+  | { status: "abgelehnt"; fehler: string }
+  | { status: "spaeter" };
 
 async function sende(op: Op): Promise<Ergebnis> {
   const json = (body: unknown) => ({
@@ -105,8 +141,12 @@ async function sende(op: Op): Promise<Ergebnis> {
     if (res.ok) return { status: "ok", json: await res.json().catch(() => null) };
     // Abgemeldet: später nochmal, nach dem Login klappt es
     if (res.status === 401) return { status: "spaeter" };
-    // Andere 4xx werden nicht besser — verwerfen statt die Outbox für immer zu blockieren
-    if (res.status >= 400 && res.status < 500) return { status: "verwerfen" };
+    // Andere 4xx werden durch Wiederholen nicht besser — beiseitelegen statt
+    // die Outbox für immer zu blockieren, aber sichtbar (ladeFehlgeschlagen)
+    if (res.status >= 400 && res.status < 500) {
+      const json = await res.json().catch(() => null);
+      return { status: "abgelehnt", fehler: typeof json?.error === "string" ? json.error : `HTTP ${res.status}` };
+    }
     return { status: "spaeter" };
   } catch {
     return { status: "spaeter" };
@@ -138,7 +178,10 @@ export function abarbeiten(rueck: Rueckmeldungen): Promise<void> {
         const ergebnis = await sende(op);
         if (ergebnis.status === "spaeter") return;
         speichere(ladeOutbox().filter((o) => o.opId !== op.opId));
-        if (ergebnis.status !== "ok") continue;
+        if (ergebnis.status === "abgelehnt") {
+          speichereFehlgeschlagen([...ladeFehlgeschlagen(), { op, fehler: ergebnis.fehler }]);
+          continue;
+        }
 
         const antwortId = typeof ergebnis.json?.id === "string" ? ergebnis.json.id : null;
         if ((op.typ === "training" || op.typ === "uebung") && antwortId && antwortId !== op.id) {
