@@ -45,6 +45,16 @@ function heuteBerlin(): string {
 
 const nachZeit = (a: SatzLokal, b: SatzLokal) => a.createdAt.localeCompare(b.createdAt);
 
+/**
+ * Ein lokales Training von einem früheren Tag (vergessenes "Beenden") wird
+ * verworfen, sobald nichts mehr dafür in der Outbox wartet — der Server
+ * schließt es im 03:00-Lauf ohnehin. Sonst landen heutige Sätze im Training
+ * von gestern, und die andere Person sieht es nicht als laufend.
+ */
+function istAbgelaufen(t: TrainingLokal | null): boolean {
+  return t !== null && t.datum !== heuteBerlin() && ladeOutbox().length === 0;
+}
+
 export function GymClient({ daten }: { daten: GymDaten }) {
   const router = useRouter();
   const [bereit, setBereit] = useState(false);
@@ -79,6 +89,10 @@ export function GymClient({ daten }: { daten: GymDaten }) {
     let lokaleMeine = lokal?.meine ?? [];
     // Kein lokales Training, aber auf dem Server habe ich in einem laufenden
     // schon Sätze (anderes Gerät, Speicher gelöscht) → einfach weitermachen
+    if (istAbgelaufen(t)) {
+      t = null;
+      lokaleMeine = [];
+    }
     if (!t && serverLaufend?.saetze.some((s) => s.userId === ich)) {
       t = { id: serverLaufend.id, planId: serverLaufend.planId, datum: serverLaufend.datum, gestartetAt: serverLaufend.gestartetAt };
       lokaleMeine = [];
@@ -146,6 +160,8 @@ export function GymClient({ daten }: { daten: GymDaten }) {
   }, []);
 
   const trainingId = training?.id ?? null;
+  const trainingRef = useRef(training);
+  trainingRef.current = training;
 
   // ---- Polling: erst eigene Outbox loswerden, dann den Stand beider holen
   useEffect(() => {
@@ -153,6 +169,14 @@ export function GymClient({ daten }: { daten: GymDaten }) {
     async function runde() {
       await synchronisieren();
       if (!trainingId) return;
+      if (istAbgelaufen(trainingRef.current)) {
+        setTraining(null);
+        setMeine([]);
+        setExtra([]);
+        setPartnerSaetze([]);
+        router.refresh();
+        return;
+      }
       const stand = aenderungen.current;
       try {
         const res = await fetch(`/api/training/${trainingId}`, { cache: "no-store" });
@@ -191,7 +215,7 @@ export function GymClient({ daten }: { daten: GymDaten }) {
       window.removeEventListener("offline", beiOffline);
       document.removeEventListener("visibilitychange", beiSichtbar);
     };
-  }, [bereit, trainingId, ich, synchronisieren]);
+  }, [bereit, trainingId, ich, synchronisieren, router]);
 
   useEffect(() => {
     if (!meldung) return;
@@ -314,7 +338,9 @@ export function GymClient({ daten }: { daten: GymDaten }) {
         <div>
           <p className="font-medium">{plan?.name ?? "Freies Training"}</p>
           <p className="text-xs text-muted">
-            {training.datum === heuteBerlin() ? "läuft" : `seit ${formatBerlinDatum(new Date(`${training.datum}T00:00:00Z`))}`}
+            {training.datum === heuteBerlin()
+              ? "läuft"
+              : `vom ${formatBerlinDatum(new Date(`${training.datum}T00:00:00Z`))} — wird nach dem Sync geschlossen`}
             {" · "}
             {meine.length} Sätze{partner ? ` · ${partner.name}: ${partnerSaetze.length}` : ""}
           </p>

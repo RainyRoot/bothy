@@ -146,3 +146,17 @@ export async function wochenSerie(): Promise<WochenSerie> {
   }
   return { dieseWoche, wochenInFolge };
 }
+
+/**
+ * Ein vergessenes "Beenden" darf nicht ewig offen bleiben: Trainings von
+ * früheren Tagen werden geschlossen (Serverstart + täglich 03:00). Sonst
+ * landen am nächsten Tag Sätze im Training von gestern, und die andere
+ * Person startet ein eigenes, weil sie nur nach heute sucht.
+ */
+export async function beendeVergesseneTrainings(): Promise<number> {
+  const { count } = await prisma.training.updateMany({
+    where: { beendetAt: null, datum: { lt: berlinHeuteAlsDatum() } },
+    data: { beendetAt: new Date() },
+  });
+  return count;
+}

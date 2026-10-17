@@ -1,5 +1,6 @@
 import { materialisiereAlle } from "@/lib/reminder-materialize";
 import { materialisiereAlleTodos } from "@/lib/todo-materialize";
+import { beendeVergesseneTrainings } from "@/lib/training";
 import { berlinWallParts, berlinWallToUTC } from "@/lib/timezone";
 
 let started = false;
@@ -29,6 +30,11 @@ async function laufen() {
     await materialisiereAlleTodos();
   } catch (err) {
     console.error("Todo-Materialisierer-Fehler:", err);
+  }
+  try {
+    await beendeVergesseneTrainings();
+  } catch (err) {
+    console.error("Fehler beim Beenden alter Trainings:", err);
   }
 }
 
