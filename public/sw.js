@@ -43,6 +43,10 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // API nie aus dem Cache: bei schwachem Netz käme sonst nach dem Timeout eine
+  // alte Antwort, und das Polling (Töpfe, Einkaufsliste, Training) würde
+  // frische Stände mit veralteten überschreiben. Offline decken die Outboxen ab.
+  if (url.pathname.startsWith("/api/")) return;
 
   const netz = fetch(event.request).then((response) => {
     if (response.ok) {
