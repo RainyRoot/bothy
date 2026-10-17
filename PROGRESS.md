@@ -27,6 +27,14 @@ Gym steht aus.
 
 ## Nächster Schritt
 
+> **Erst testen, nicht weiterbauen** (Review 2026-10-17): seit dem letzten
+> Browser-Test sind rund 3.700 Zeilen dazugekommen, nichts davon auf dem
+> Handy geprüft; der Stufe-0-DoD (Push auf beiden Handys) — laut PLAN.md
+> „der wichtigste DoD im ganzen Dokument" — steht weiter aus. Reihenfolge:
+> ein Abend Tailscale + NAS + beide Handys (Push aktivieren, Stufe-0-Test
+> starten, Docker-Compose erstmals real), dann ein echtes Training zu
+> zweit mit Flugmodus-Test. **Erst danach neue Features** aus dem Backlog.
+
 0. **Review-Fixes im Browser durchklicken** (Chris): Einstellungen
    (Zahnrad oben rechts auf Start), Buchung antippen → ändern/löschen,
    Topf „Bearbeiten", Archiv, Einkaufsliste offline (Artikel hinzufügen +
@@ -217,6 +225,7 @@ Beantwortet werden sie von Chris, nicht von einer Instanz allein.
 
 - Domain (erst nötig, falls/wenn Richtung Play Store — siehe Entscheidungen)
 - Farbschema/Icon: erster Entwurf steht (siehe Entscheidungen 2026-08-27), Chris' Feinjustierung nach Browser-Ansicht steht noch aus
+- Progressions-Hinweis im Training („alle Sätze haben das Ziel erreicht → nächstes Mal +2,5 kg?"): grenzt an „automatische Progression", ein Nicht-Ziel aus PLAN.md 4.5 — als reiner Hinweis vertretbar? Chris' Entscheidung
 
 ---
 
@@ -245,10 +254,19 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
   - Stamm-Artikel für die Einkaufsliste, Sortierung nach Supermarkt-Bereich
   - Buchungsvorlagen als Ein-Tap-Chips („Tanken 50 €")
   - Geburtstags-Countdown mit Geschenkidee-Notiz
-  - Einstellungsseite: Passwort ändern, Push-Status/Test-Button, Logout
-  - Einkaufsliste neu erzeugen *zusammenführen* statt überschreiben; Einkaufsliste pollen wie die Töpfe
-  - `themeColor` für Hell/Dunkel getrennt; alte SW-Caches beim `activate` aufräumen
+  - ~~Einstellungsseite: Passwort ändern, Push-Status/Test-Button, Logout~~ (erledigt 2026-10-17)
+  - ~~Einkaufsliste neu erzeugen *zusammenführen* statt überschreiben; Einkaufsliste pollen wie die Töpfe~~ (erledigt 2026-10-17)
+  - ~~`themeColor` für Hell/Dunkel getrennt; alte SW-Caches beim `activate` aufräumen~~ (erledigt 2026-10-17)
 - Training, bewusst nicht in Stufe 5: Charts, Körpergewicht, Pausentimer, Cardio, RPE, Supersätze, automatische Progression
+- **Aus dem Review 2026-10-17, offen** (🔴 1–3 sind gefixt, siehe Session-Log):
+  - **„Beenden" heißt „ich bin fertig"**, nicht „Training zu" — wer zuerst fertig ist, schließt derzeit das gemeinsame Training; drückt die andere Person danach „Training starten", entsteht ein neues. Training sollte enden, wenn beide fertig sind oder automatisch (03:00-Lauf, schon gebaut)
+  - Beitreten wechselt still den Plan: vorher „Mara trainiert schon Push — beitreten?" zeigen (Grundlage ist derzeit der Seitenstand beim Laden)
+  - Aufwärmsätze: Schalter „Aufwärmen" pro Satz, zählt nicht für „letztes Mal"-Vorschlag und Rekord (20 kg × 15 verschiebt sonst alle Vorschläge, Epley überschätzt hohe Wdh.)
+  - Vergangene Trainings korrigieren/löschen — ein Tippfehler (675 statt 67,5) bleibt sonst für immer der Rekord. Zusammen mit: **Trainings-Verlauf** (Liste vergangener Trainings, antippen → korrigieren/löschen)
+  - Passwort ändern meldet niemanden ab (Cookie 180 Tage, nicht widerrufbar; verlorenes Handy bleibt eingeloggt) → `sessionVersion` am User, im Cookie mitgeführt und verglichen. Hinweis: per Invite-Code kann jede von beiden auch das Passwort der anderen zurücksetzen — bei zwei Leuten okay, bewusst so
+  - Outbox gehört dem Gerät, nicht der Person: Ops mit `userId` speichern, fremde nach Nutzerwechsel nicht senden
+  - Ideen Gym: Notiz pro Übung („Sitz Stufe 4, Griff eng"), Scheibenrechner (67,5 kg → „je Seite 20 + 2,5"), Zusammenfassung nach dem Training („14 Sätze · 2 Rekorde · Bank +2,5 kg"), „Heute Gym" auf der Startseite aus dem Kalender-Termin mit „Training starten", App-Shortcut „Training starten"
+  - Empfehlung des Reviews für danach: „Heute"-Startseite, App-Shortcuts, Morgen-Push (siehe oben) — bringen im Alltag am meisten
 
 ---
 
@@ -256,6 +274,28 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-10-17 (Fortsetzung 2) — Review zu Stufe 5, Punkte 1–3 gefixt
+Zweites Review (Stand nach Stufe 5) mit der Frage „mit 1–3 anfangen und
+die neuen Ideen ins Backlog?" — genau das gemacht, je ein Commit:
+
+1. **Vergessenes „Beenden"** (`5a3d83d`): Serverstart + 03:00-Lauf
+   schließen Trainings früherer Tage; der Client verwirft ein lokales
+   Training von gestern, sobald die Outbox leer ist. Geprüft: Training
+   vom 16.10. beim Start geschlossen, heutiges offen geblieben.
+2. **SW bedient `/api/` nie aus dem Cache** (`baa7a0e`) — sonst
+   überschrieb das Polling bei schwachem Netz frische Stände mit alten.
+3. **Gym-Outbox verwirft nichts mehr still** (`9029d3e`): abgelehnte Ops
+   in eigener Liste, rot angezeigt, „Nochmal versuchen"/„Verwerfen".
+   Geprüft mit der echten `outbox.ts` in Node.
+
+Punkt 4 („Beenden" = „ich bin fertig") und alle 🟡-Punkte/Ideen stehen
+im Backlog, der Progressions-Hinweis als offene Frage (grenzt an ein
+Nicht-Ziel). Bewusst nichts davon gebaut — Empfehlung des Reviews:
+erst auf echten Geräten testen.
+
+Nebenbei beim Testen bestätigt: läuft die Session ab, hält die Outbox
+alles zurück (401 = „später"), statt es zu verwerfen.
 
 ### 2026-10-17 (Fortsetzung) — Stufe 5: Training gebaut
 Chris: „there should be a new thing in the plan.md go check and develop
