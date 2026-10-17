@@ -203,7 +203,8 @@ export function GymClient({ daten }: { daten: GymDaten }) {
 
   function aendern() {
     aenderungen.current++;
-    setOffline(true);
+    // Der Offline-Hinweis kommt erst, wenn der Sync tatsächlich hängen bleibt —
+    // sonst blitzt er bei jedem Satz kurz auf
     void synchronisieren();
   }
 
