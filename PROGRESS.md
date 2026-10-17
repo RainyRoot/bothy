@@ -12,9 +12,11 @@ Todo-Liste** ist neu dazugekommen und nur per curl getestet, noch
 nicht im Browser. Sonst offen: was echte Geräte/Zeit braucht
 (Drei-Tage-Handy-DoD aus Stufe 0, Zwei-Geräte-Gleichzeitigkeitstest aus
 Stufe 1), dazu Docker Compose (auf diesem Rechner nicht testbar).
-Neu: Code-Review vom 2026-10-16 hat mehrere echte Bugs gefunden (v.a.
-Zeitzonen/Erinnerungen, siehe „Bekannte Bugs"), und **Stufe 5 —
-Training** ist in PLAN.md spezifiziert, noch nicht gebaut.
+Das Code-Review vom 2026-10-16 ist **komplett abgearbeitet** (alle Bugs
+B1–B7, die kleineren Punkte und die fehlenden PLAN-Teile, siehe
+Session-Log 2026-10-17) — code-fertig, per curl und Skript geprüft,
+**noch nicht im Browser / auf dem Handy**. **Stufe 5 — Training** ist in
+PLAN.md spezifiziert, noch nicht gebaut.
 **Letzte Aktualisierung:** 2026-10-17
 **Branch:** `dev`
 
@@ -22,10 +24,16 @@ Training** ist in PLAN.md spezifiziert, noch nicht gebaut.
 
 ## Nächster Schritt
 
-0. **Bugs aus dem Review fixen, zuerst B1–B5** (siehe „Bekannte Bugs"
-   unten) — sie entscheiden, ob Erinnerungen auf den Handys überhaupt
-   stimmen und ob das NAS-Deployment startet. Danach die Punkte unten.
-   **Stufe 5 erst nach den Geräte-Verifikationen anfangen.**
+0. **Review-Fixes im Browser durchklicken** (Chris): Einstellungen
+   (Zahnrad oben rechts auf Start), Buchung antippen → ändern/löschen,
+   Topf „Bearbeiten", Archiv, Einkaufsliste offline (Artikel hinzufügen +
+   umbenennen im Flugmodus, dann wieder online), „Neu aus Essensplan
+   erzeugen" behält eigene Artikel, Essen-Tab mit Umschalter. **Mara hat
+   aktuell kein Gerät mit Push** (Einstellungen → Zustellung zeigt es,
+   eine Erinnerung an sie ist am 27.09. nach 5 Versuchen verfallen) —
+   auf ihrem Handy Push aktivieren.
+   Danach die Punkte unten. **Stufe 5 erst nach den
+   Geräte-Verifikationen anfangen.**
 1. **Stufe 4 — Todo-Liste im Browser anschauen** (Chris): `/todos`
    durchklicken, Quick-Add, „mehr"-Ausklapper (Priorität/Fälligkeit/
    Erinnerung/Zuweisung), Abhaken, Löschen. Die Erinnerungs-Pipeline
@@ -38,7 +46,10 @@ Training** ist in PLAN.md spezifiziert, noch nicht gebaut.
    vermutlich abgelaufen — bei Bedarf `tailscale up` neu ausführen.
 3. Docker Compose einmal real durchlaufen lassen — auf diesem
    Entwicklungsrechner nicht möglich (keine Virtualisierung, siehe
-   Session-Log), muss auf dem NAS passieren.
+   Session-Log), muss auf dem NAS passieren. Neu dabei und ebenfalls
+   ungetestet: Service `migrate` (läuft vor der App) und `backup`
+   (`BACKUP_DIR` in `.env` auf einen NAS-Pfad setzen, danach einmal
+   einen Restore mit `pg_restore` ausprobieren — PLAN.md 7).
 4. Zwei-Geräte-Gleichzeitigkeitstest für Stufe 1 (Töpfe): Änderung auf
    einem Gerät binnen 30s beim anderen sichtbar.
 
@@ -47,9 +58,11 @@ Geräte-Verifikationen selbst.
 
 ---
 
-## Bekannte Bugs (Review 2026-10-16)
+## Review 2026-10-16 — erledigt
 
-Gefunden beim Durchlesen des gesamten Codes, noch nicht gefixt.
+Alle Punkte unten am 2026-10-17 gefixt (Commits `b399b80` bis
+`471ed57`, Details im Session-Log). Liste bleibt als Referenz stehen,
+bis die Fixes auf dem Handy bestätigt sind — dann kann sie raus.
 
 - **B1** Wöchentliche/monatliche/jährliche Termine mit Uhrzeit verschieben sich bei der Zeitumstellung um eine Stunde — `expandiereTermin` rechnet in UTC (+7×24h bzw. UTC-Stunde bleibt). Fix: in Berlin-Wandzeit expandieren, dann `berlinWallToUTC`.
 - **B2** Erinnerungen für ganztägige Termine und Todos kommen nachts um 1–2 Uhr (00:00 UTC − Vorlauf). Fix: auf feste Berlin-Uhrzeit verankern (z.B. 08:00).
@@ -123,7 +136,7 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [ ] Schema + Migration (`Uebung`, `Trainingsplan`, `PlanUebung`, `Training`, `Satz`)
   - [ ] Pläne verwalten, Training starten/beitreten, Satz-Erfassung mit „letztes Mal"
   - [ ] Rekorde, Fortschritt als Text, Wochen-Serie
-  - [ ] Bottom-Nav: Essen+Liste zusammenlegen, Gym-Tab
+  - [ ] Bottom-Nav: ~~Essen+Liste zusammenlegen~~ (schon erledigt, 2026-10-17), Gym-Tab
   - [ ] **DoD:** siehe PLAN.md 5, auf zwei Handys im Gym
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
@@ -169,6 +182,15 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-10-17 | Training: **kein Körpergewicht, kein Pausentimer** in Stufe 5 | Chris' Entscheidung — Fokus aufs Loggen; Pausentimer ginge in einer PWA ohnehin nur bei offener App zuverlässig |
 | 2026-10-17 | Training: Client-erzeugte UUIDs als Primärschlüssel für `Training`/`Satz`, Upsert | Offline-Sync muss idempotent sein — ein mehrfach gesendeter Satz darf nur einmal landen |
 | 2026-10-17 | Training: Gewichte als `Int` in Gramm | gleiche Regel wie Cent, 67,5 kg = `67500` |
+| 2026-10-17 | Serien mit Uhrzeit expandieren in **Berlin-Wanduhrzeit**, ganztägige weiter in UTC-Datum; Erinnerungs-Vorlauf ebenfalls in Wanduhrzeit | „Di 19:00" muss nach der Zeitumstellung 19:00 bleiben; `expandiereTermin` bleibt die eine gemeinsame Funktion für Kalender und Materialisierer |
+| 2026-10-17 | Erinnerungen an ganztägige Termine und Todos um **08:00 Berlin** (`GANZTAGS_ERINNERUNG_UHRZEIT` in `kalender-shared.ts`) | vorher 00:00 UTC − Vorlauf = 02:00 nachts. 08:00 war der Vorschlag aus dem Review — Chris kann es dort ändern |
+| 2026-10-17 | Erinnerungen, die beim Anlegen schon >5 min vorbei sind, werden nicht erzeugt | sonst Push-Schwall direkt nach dem Speichern |
+| 2026-10-17 | Migrationen im Docker-Betrieb über eigenen Compose-Service `migrate` (Dockerfile-Stage `migrator`), nicht im App-Image | Prisma-CLI ist devDependency; App-Image bleibt schlank, App startet erst nach erfolgreicher Migration |
+| 2026-10-17 | Backup: `pg_dump -Fc` täglich nach `BACKUP_DIR`, 30 Tage, **unverschlüsselt** | PLAN.md 7 will verschlüsselt + zweites Ziel — beides offen (siehe Backlog), erst mal überhaupt ein Backup |
+| 2026-10-17 | Einkaufsliste: `EinkaufslistenItem.manuell` (Migration `einkaufsliste_manuell`), Neu-Erzeugen führt zusammen | manuelle/umbenannte Artikel und Häkchen gingen beim Neu-Erzeugen verloren; ohne Feld nicht unterscheidbar |
+| 2026-10-17 | Passwort-Reset über **Name + Invite-Code** (`/passwort-vergessen`) | kein Mailversand vorhanden; der Invite-Code ist das gemeinsame Geheimnis, das es schon gibt |
+| 2026-10-17 | Bottom-Nav: Essensplan + Einkaufsliste in **einem** Tab „Essen" mit Umschalter | sechs Tabs waren zu eng (Review); macht Platz für den Gym-Tab aus Stufe 5 |
+| 2026-10-17 | Service Worker wird mit `?v=<Build-ID>` registriert, Cache pro Build | ein unverändertes `sw.js` löst nie `activate` aus — so räumt jeder Deploy die alten Chunks weg |
 
 ---
 
@@ -192,6 +214,8 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 - Play-Store-Veröffentlichung via Bubblewrap
 - PostgreSQL-Windows-Dienst mit korrekten Rechten einrichten, damit `pg_ctl` nach Neustart nicht manuell nötig ist (nur relevant für diesen Entwicklungsrechner, nicht für Betrieb)
 - Echtes Background Sync (IndexedDB-Queue im Service Worker) statt localStorage+`online`-Event, falls Sync auch bei geschlossenem Tab gebraucht wird
+- Backup verschlüsseln und auf ein zweites Ziel kopieren (PLAN.md 7) — der `backup`-Service schreibt bisher nur unverschlüsselt aufs NAS
+- Erinnerungs-Uhrzeit für ganztägige Termine/Todos (derzeit fest 08:00) in den Einstellungen wählbar machen, falls gewünscht
 - Ideen aus dem Review 2026-10-16:
   - App-Shortcuts im Manifest (Lang-Tippen aufs Icon → „Ausgabe erfassen", „Artikel auf die Liste", „Training starten")
   - „Heute"-Startseite: heutige Termine, heutiges Essen, fällige Todos, Trainingstag
@@ -215,6 +239,46 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-10-16/17 — Code-Review abgearbeitet
+Chris gab das Review mit „work on it" rein. Alles daraus umgesetzt, in
+neun Commits (`b399b80` … `471ed57`):
+
+- **Zeitzonen/Erinnerungen (B1–B4):** `expandiereTermin` rechnet Serien
+  mit Uhrzeit in Berlin-Wanduhrzeit, ganztägige Erinnerungen um 08:00
+  Berlin, vergangene Erinnerungen werden nicht erzeugt, Agenda/Home ab
+  Berlin-Tagesbeginn, Monatsraster nach Berlin-Tag, 03:00-Lauf in
+  Berlin-Zeit. Der volle Materialisierer-Lauf ersetzt jetzt künftige
+  offene Jobs, damit nach dem Deploy die alten (falschen) Zeitpunkte
+  nicht zusätzlich feuern. Per Skript und curl geprüft: „Di 19:00"
+  bleibt nach dem 25.10. 19:00, „1 Woche vorher" ebenso, Geburtstag
+  erinnert 08:00 am Vortag/Tag.
+- **Push-Texte** mit „morgen, 14:30 · Ort" und Link auf den Termin;
+  Klick öffnet ein bestehendes Fenster. Fehlergrund mit HTTP-Status.
+- **PWA (B7):** PNG-Icons 192/512/maskable + einfarbiges Badge-PNG
+  (einmalig mit dem schon vorhandenen `sharp` gerendert, keine neue
+  Dependency). **Zusätzlich gefunden:** die Middleware leitete
+  `manifest.json` und `sw.js` ohne Session auf `/login` um — Chrome
+  holt das Manifest ohne Cookies, die App war so nicht sauber
+  installierbar. Das ist vermutlich der eigentliche Grund für
+  „nur Verknüpfung". SW: Cache pro Build, 4-s-Netz-Timeout.
+- **Docker (B5):** Compose-Services `migrate` und `backup`. Ungetestet.
+- **Einkaufsliste (B6 + mehr):** eine Offline-Queue für alle Änderungen
+  (`einkaufsliste/offline-queue.ts`), 4xx wird verworfen, Polling alle
+  10 s, Neu-Erzeugen führt zusammen (neues Feld `manuell`).
+- **Validierung:** `lib/eingabe.ts`, kaputte Daten → 400 statt 500.
+  Buchungen mit Berlin-Datum. Termin-PATCH übernimmt jetzt `serienEnde`
+  (wurde bisher still ignoriert).
+- **Neu:** Buchungen/Umbuchungen ändern und löschen (beide Hälften),
+  Topf bearbeiten, Topf-Archiv, `/einstellungen` (Push, Passwort,
+  Zustell-Übersicht nach PLAN.md 7, Abmelden), `/passwort-vergessen`,
+  Essen+Liste in einem Tab, Home zeigt „… zum Ausgeben" (nur
+  Verbrauchstöpfe).
+
+`tsc`, `eslint`, `npm run build` sauber. Testdaten wieder gelöscht.
+**Nicht im Browser angeschaut** — siehe „Nächster Schritt" 0. Die
+neue Zustell-Übersicht zeigte sofort einen echten Befund: Mara hat
+keine Push-Subscription.
 
 ### 2026-10-16/17 — Code-Review, Stufe 5 (Training) spezifiziert
 Chris wollte ein Review mit Feedback/QOL-Ideen. Gesamten Code gelesen
