@@ -21,6 +21,7 @@ model User {
   subscriptions PushSubscription[]
   jobs          ReminderJob[]
   todoJobs      TodoReminderJob[]
+  saetze        Satz[]
 }
 
 model PushSubscription {
@@ -229,4 +230,70 @@ model EinkaufslistenItem {
   // Von Hand hinzugefügt oder umbenannt — "Neu aus Essensplan erzeugen"
   // lässt solche Einträge stehen, statt sie mit der Liste neu zu bauen
   manuell         Boolean       @default(false)
+}
+
+// ---------- Training (Stufe 5) ----------
+// Pläne und Übungen sind gemeinsam, Sätze gehören je einer Person.
+// Rekorde und "letztes Mal" werden gerechnet, nie gespeichert —
+// gleiche Regel wie bei den Topfständen (PLAN.md 4.5).
+
+model Uebung {
+  // Darf vom Client vorgegeben werden (offline angelegte Übung), sonst cuid
+  id            String       @id @default(cuid())
+  name          String       @unique // "Bankdrücken", "Klimmzüge"
+  archiviert    Boolean      @default(false) // ausgeblendet, Historie bleibt
+  planEintraege PlanUebung[]
+  saetze        Satz[]
+  createdAt     DateTime     @default(now())
+}
+
+model Trainingsplan {
+  id         String       @id @default(cuid())
+  name       String // "Push", "Pull", "Beine"
+  sortierung Int          @default(0)
+  archiviert Boolean      @default(false)
+  uebungen   PlanUebung[]
+  trainings  Training[]
+}
+
+model PlanUebung {
+  id         String        @id @default(cuid())
+  planId     String
+  plan       Trainingsplan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  uebungId   String
+  uebung     Uebung        @relation(fields: [uebungId], references: [id])
+  sortierung Int
+  zielSaetze Int           @default(3)
+  zielWdh    Int? // Richtwert, nur Anzeige
+
+  @@index([planId, sortierung])
+}
+
+model Training {
+  id          String         @id // vom Client erzeugte UUID, siehe PLAN.md 4.5
+  datum       DateTime       @db.Date // Berlin-Kalendertag des Trainings
+  planId      String? // null = freies Training
+  plan        Trainingsplan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  gestartetAt DateTime // UTC
+  beendetAt   DateTime? // null = läuft noch
+  saetze      Satz[]
+  createdAt   DateTime       @default(now())
+
+  @@index([datum])
+}
+
+model Satz {
+  id             String   @id // vom Client erzeugte UUID, siehe PLAN.md 4.5
+  trainingId     String
+  training       Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uebungId       String
+  uebung         Uebung   @relation(fields: [uebungId], references: [id])
+  gewichtGramm   Int // 67,5 kg = 67500. NIEMALS Float. Bei Körpergewicht-Übungen: Zusatzgewicht, 0 erlaubt
+  wiederholungen Int
+  createdAt      DateTime @default(now()) // Reihenfolge der Sätze
+
+  @@index([userId, uebungId, createdAt])
+  @@index([trainingId])
 }

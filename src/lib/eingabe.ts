@@ -58,3 +58,21 @@ export function mitEingabepruefung<A extends unknown[]>(
     }
   };
 }
+
+const CLIENT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+/** Vom Client erzeugte ID (crypto.randomUUID(), PLAN.md 4.5). Fehlt/ungültig → 400. */
+export function clientId(wert: unknown, feld: string): string {
+  if (typeof wert !== "string" || !CLIENT_ID_RE.test(wert)) {
+    throw new UngueltigeEingabe(`${feld} fehlt oder ist ungültig`);
+  }
+  return wert;
+}
+
+/** Ganze Zahl im Bereich [min, max], sonst 400. */
+export function ganzzahl(wert: unknown, feld: string, min: number, max: number): number {
+  if (typeof wert !== "number" || !Number.isInteger(wert) || wert < min || wert > max) {
+    throw new UngueltigeEingabe(`${feld} muss eine ganze Zahl zwischen ${min} und ${max} sein`);
+  }
+  return wert;
+}
