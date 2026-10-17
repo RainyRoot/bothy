@@ -15,8 +15,11 @@ Stufe 1), dazu Docker Compose (auf diesem Rechner nicht testbar).
 Das Code-Review vom 2026-10-16 ist **komplett abgearbeitet** (alle Bugs
 B1–B7, die kleineren Punkte und die fehlenden PLAN-Teile, siehe
 Session-Log 2026-10-17) — code-fertig, per curl und Skript geprüft,
-**noch nicht im Browser / auf dem Handy**. **Stufe 5 — Training** ist in
-PLAN.md spezifiziert, noch nicht gebaut.
+**noch nicht im Browser / auf dem Handy**. **Stufe 5 — Training** ist
+seit 2026-10-17 **code-komplett** (auf Chris' Wunsch vor den
+Geräte-Verifikationen gebaut) — Offline-Sync per Skript gegen die echte
+API bewiesen, Oberfläche noch nicht im Browser, Handy-Offline-Test im
+Gym steht aus.
 **Letzte Aktualisierung:** 2026-10-17
 **Branch:** `dev`
 
@@ -32,8 +35,16 @@ PLAN.md spezifiziert, noch nicht gebaut.
    aktuell kein Gerät mit Push** (Einstellungen → Zustellung zeigt es,
    eine Erinnerung an sie ist am 27.09. nach 5 Versuchen verfallen) —
    auf ihrem Handy Push aktivieren.
-   Danach die Punkte unten. **Stufe 5 erst nach den
-   Geräte-Verifikationen anfangen.**
+   Danach die Punkte unten.
+0b. **Stufe 5 auf dem Handy beweisen** (PLAN.md 5 „Vorab"): `/gym`
+   einmal online öffnen (damit der Service Worker die Seite cacht),
+   Flugmodus an, Training starten, Sätze loggen/korrigieren/löschen,
+   Flugmodus aus → Sätze genau einmal da (Übungen & Fortschritt
+   prüfen). Vorher einen Plan unter Gym → Pläne anlegen. Läuft das
+   offline auf dem Handy nicht sauber, ändert sich laut PLAN.md der
+   Plan für diese Stufe. Unsicher ist vor allem die Navigation offline
+   (Next lädt Seiten per RSC-Request; fällt das aus, sollte der Browser
+   auf die gecachte HTML-Seite zurückfallen — nicht verifiziert).
 1. **Stufe 4 — Todo-Liste im Browser anschauen** (Chris): `/todos`
    durchklicken, Quick-Add, „mehr"-Ausklapper (Priorität/Fälligkeit/
    Erinnerung/Zuweisung), Abhaken, Löschen. Die Erinnerungs-Pipeline
@@ -131,12 +142,13 @@ Zugang: `postgres://postgres:bothy-dev-postgres@localhost:5432/bothy`
   - [x] **Per curl verifiziert:** Todo mit Fälligkeit morgen + zwei Erinnerungen (0/1440 Min) erzeugt korrekt zwei `TodoReminderJob`-Zeilen nur für die zugewiesene Person; einer davon war sofort fällig und wurde **tatsächlich als Push zugestellt** (unbeabsichtigt beim Testen, siehe Session-Log) — echte Zustellung damit bereits bestätigt, nicht nur die Pipeline bis zur DB. `erledigt=true` löscht offene Jobs korrekt, Löschen kaskadiert `TodoErinnerung`+`TodoReminderJob` sauber weg
   - [x] Bearbeiten nachgezogen (Chris' Feedback) — Tippen auf den Text öffnet ein Inline-Formular, Fälligkeit lässt sich auch wieder auf leer setzen (löscht offene Jobs korrekt mit)
   - [ ] Noch nicht im Browser angeschaut
-- [ ] **Stufe 5 — Training** (spezifiziert in PLAN.md 3/4.5/5, noch nicht gebaut)
-  - [ ] Offline-Beweis zuerst: Training im Flugmodus anlegen, Sätze loggen, Sync ohne Duplikate
-  - [ ] Schema + Migration (`Uebung`, `Trainingsplan`, `PlanUebung`, `Training`, `Satz`)
-  - [ ] Pläne verwalten, Training starten/beitreten, Satz-Erfassung mit „letztes Mal"
-  - [ ] Rekorde, Fortschritt als Text, Wochen-Serie
-  - [ ] Bottom-Nav: ~~Essen+Liste zusammenlegen~~ (schon erledigt, 2026-10-17), Gym-Tab
+- [x] **Stufe 5 — Training** (gebaut 2026-10-17, per Skript gegen die echte API getestet, noch nicht im Browser)
+  - [x] Offline-Beweis serverseitig + mit der echten `gym/outbox.ts` in Node: Training offline angelegt, 3 Sätze, 1 korrigiert, 1 gelöscht, dann doppelt parallel und komplett wiederholt gesynct → genau 2 Sätze in der DB, offline getippte Übung „zz bank" auf die bestehende „ZZ Bank" umgestellt
+  - [ ] Offline-Beweis **auf dem Handy** (Flugmodus) — siehe „Nächster Schritt" 0b
+  - [x] Schema + Migration `20261017060252_stufe5_training` (`Uebung`, `Trainingsplan`, `PlanUebung`, `Training`, `Satz`)
+  - [x] Pläne verwalten, Training starten/beitreten, Satz-Erfassung mit „letztes Mal" (ein Tap), ±2,5 kg/±1 Wdh., Sätze korrigieren/löschen, Übung aus dem Eingabefeld
+  - [x] Rekorde (Epley, beim Speichern gemeldet), Fortschritt als Text, Wochen-Serie
+  - [x] Bottom-Nav: Essen+Liste zusammengelegt, Gym-Tab; Home-Kachel
   - [ ] **DoD:** siehe PLAN.md 5, auf zwei Handys im Gym
 
 Ausformulierte Definitions of Done: `PLAN.md` Abschnitt 5.
@@ -190,6 +202,11 @@ Nur Beschlossenes. Was hier steht, wird nicht neu diskutiert.
 | 2026-10-17 | Einkaufsliste: `EinkaufslistenItem.manuell` (Migration `einkaufsliste_manuell`), Neu-Erzeugen führt zusammen | manuelle/umbenannte Artikel und Häkchen gingen beim Neu-Erzeugen verloren; ohne Feld nicht unterscheidbar |
 | 2026-10-17 | Passwort-Reset über **Name + Invite-Code** (`/passwort-vergessen`) | kein Mailversand vorhanden; der Invite-Code ist das gemeinsame Geheimnis, das es schon gibt |
 | 2026-10-17 | Bottom-Nav: Essensplan + Einkaufsliste in **einem** Tab „Essen" mit Umschalter | sechs Tabs waren zu eng (Review); macht Platz für den Gym-Tab aus Stufe 5 |
+| 2026-10-17 | Stufe 5 vor den Geräte-Verifikationen gebaut | Chris' ausdrücklicher Wunsch („develop it"), entgegen der eigenen Notiz „erst nach den Geräte-Verifikationen" |
+| 2026-10-17 | Training: offline gestartetes Training **tritt beim Sync** einem inzwischen laufenden bei (Server gibt dessen ID zurück, Outbox stellt um) | sauberer als PLAN.md 4.5 verlangt („zwei Trainings — akzeptiert"); kostet nur die ohnehin nötige ID-Umstellung |
+| 2026-10-17 | Übungen bekommen ebenfalls eine Client-ID; gleicher Name (Groß/klein egal) → bestehende Übung | „neue Übung direkt aus dem Eingabefeld" muss offline gehen; doppelte Übungen durch Tippvarianten vermeiden |
+| 2026-10-17 | Training-UI ist **eine** Seite `/gym` (Übersicht und laufendes Training per Zustand, keine Unterseite) | offline muss nur diese eine Seite im SW-Cache liegen; „letztes Mal"/Rekorde für alle Übungen kommen gleich mit der Seite |
+| 2026-10-17 | Erster Satz einer Übung zählt nicht als „neuer Rekord" | sonst Rekord-Meldung bei jeder neuen Übung |
 | 2026-10-17 | Service Worker wird mit `?v=<Build-ID>` registriert, Cache pro Build | ein unverändertes `sw.js` löst nie `activate` aus — so räumt jeder Deploy die alten Chunks weg |
 
 ---
@@ -239,6 +256,30 @@ Ideen, die nicht in der laufenden Stufe landen dürfen.
 
 Ein Eintrag pro Session. Neueste oben. Kurz halten: was gebaut wurde,
 was hängt, wo die nächste Instanz ansetzt.
+
+### 2026-10-17 (Fortsetzung) — Stufe 5: Training gebaut
+Chris: „there should be a new thing in the plan.md go check and develop
+it" → Stufe 5 nach PLAN.md 3/4.5/5 gebaut, Reihenfolge wie dort
+verlangt: erst Schema + idempotente API + Outbox, dann Oberfläche.
+
+- **API:** `POST /api/training` (idempotent, tritt laufendem Training
+  bei), `PUT/DELETE /api/saetze/[id]` (Upsert auf Client-UUID, meldet
+  Rekord), `POST /api/training/[id]/beenden`, Übungen und Pläne. „Letztes
+  Mal", Rekorde (Epley, `DISTINCT ON` in SQL) und Wochen-Serie in
+  `lib/training.ts`, alles gerechnet.
+- **Client:** `gym/outbox.ts` (wie die Einkaufslisten-Queue, plus
+  ID-Umstellung), `GymClient.tsx` (Übersicht + laufendes Training, Stand
+  in localStorage), `UebungKarte.tsx` (Vorschlag = Satz Nr. n vom letzten
+  Mal → ein Tap speichert).
+- Pläne (`/gym/plaene`), Übungen & Fortschritt (`/gym/uebungen`, ohne
+  Charts), Gym-Tab und Home-Kachel.
+
+Getestet per Skript gegen die echte DB: Duplikate, Beitreten, Rekord,
+Float-Gewicht → 400, 67,5 kg ↔ `67500`, Fortschrittsseite zeigt
+„vor 4 Wochen: 60 kg × 8 → 67,5 kg × 8", und die echte `outbox.ts` durch
+einen Offline/Online-Zyklus mit Mehrfach-Sync. `tsc`, `eslint`,
+`npm run build` sauber, Testdaten gelöscht. **Nicht im Browser, nicht auf
+dem Handy** — siehe „Nächster Schritt" 0b.
 
 ### 2026-10-16/17 — Code-Review abgearbeitet
 Chris gab das Review mit „work on it" rein. Alles daraus umgesetzt, in
