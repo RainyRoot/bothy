@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconHome, IconJar, IconCalendar, IconUtensils, IconChecklist } from "./icons";
+import { IconHome, IconJar, IconCalendar, IconUtensils, IconChecklist, IconDumbbell } from "./icons";
 
 const ITEMS = [
   { href: "/", label: "Start", Icon: IconHome, match: (p: string) => p === "/" },
@@ -16,6 +16,8 @@ const ITEMS = [
     Icon: IconUtensils,
     match: (p: string) => p.startsWith("/essensplan") || p.startsWith("/einkaufsliste"),
   },
+  // Stufe 5 — der durchs Zusammenlegen von Essen+Liste frei gewordene Platz (PLAN.md 4.5)
+  { href: "/gym", label: "Gym", Icon: IconDumbbell, match: (p: string) => p.startsWith("/gym") },
 ];
 
 export function BottomNav() {

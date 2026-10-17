@@ -7,7 +7,7 @@ const CACHE_NAME = `bothy-${new URL(self.location.href).searchParams.get("v") ??
 
 // Schwaches Netz (Supermarkt) soll nicht jede Seite hängen lassen: nach dieser
 // Zeit gilt der Request als gescheitert, und der Cache springt ein.
-const NETZ_TIMEOUT_MS = 4000;
+const NETZ_TIMEOUT_MS = 3000;
 
 self.addEventListener("install", () => {
   self.skipWaiting();

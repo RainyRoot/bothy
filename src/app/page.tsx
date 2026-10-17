@@ -4,11 +4,12 @@ import { getSessionUserId } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getToepfeMitStand } from "@/lib/toepfe";
 import { getAnstehendeEreignisse } from "@/lib/kalender";
+import { wochenSerie } from "@/lib/training";
 import { formatCent } from "@/lib/money";
 import { formatBerlinDatum } from "@/lib/timezone";
 import { BottomNav } from "./BottomNav";
 import { PushSetup } from "./PushSetup";
-import { IconSettings, IconJar, IconCalendar, IconUtensils, IconCart, IconChecklist, type IconComponent } from "./icons";
+import { IconSettings, IconJar, IconCalendar, IconUtensils, IconCart, IconChecklist, IconDumbbell, type IconComponent } from "./icons";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,11 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const [toepfe, naechsteTermine, offeneTodos] = await Promise.all([
+  const [toepfe, naechsteTermine, offeneTodos, serie] = await Promise.all([
     getToepfeMitStand(),
     getAnstehendeEreignisse(30),
     prisma.todo.count({ where: { erledigt: false } }),
+    wochenSerie(),
   ]);
 
   // Nur Verbrauchstöpfe: Sparziele mit Einkaufsgeld zu addieren ergibt keine sinnvolle Zahl
@@ -43,6 +45,13 @@ export default async function Home() {
     ? `${naechsterTermin.titel} · ${formatBerlinDatum(naechsterTermin.datum)}`
     : "Nichts Anstehendes";
   const todosHint = offeneTodos === 0 ? "Alles erledigt" : `${offeneTodos} offen`;
+  const meineTrainings = serie.dieseWoche[userId] ?? 0;
+  const gymHint =
+    meineTrainings === 0
+      ? serie.wochenInFolge > 0
+        ? `${serie.wochenInFolge} Wochen in Folge`
+        : "Diese Woche noch nichts"
+      : `${meineTrainings}× diese Woche`;
 
   const heuteLabel = new Intl.DateTimeFormat("de-DE", {
     weekday: "long",
@@ -69,7 +78,8 @@ export default async function Home() {
           <HomeTile href="/kalender" icon={IconCalendar} label="Kalender" hint={kalenderHint} />
           <HomeTile href="/essensplan" icon={IconUtensils} label="Essensplan" hint="Wochenplan" />
           <HomeTile href="/einkaufsliste" icon={IconCart} label="Einkaufsliste" hint="Zum Einkauf" />
-          <HomeTile href="/todos" icon={IconChecklist} label="Todos" hint={todosHint} span />
+          <HomeTile href="/todos" icon={IconChecklist} label="Todos" hint={todosHint} />
+          <HomeTile href="/gym" icon={IconDumbbell} label="Gym" hint={gymHint} />
         </div>
 
         {/* Nur solange Push aus ist — Status und Test-Button stehen in den Einstellungen */}

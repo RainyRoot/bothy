@@ -162,3 +162,16 @@ export function IconSettings({ className }: IconProps) {
     </svg>
   );
 }
+
+// Gym — eine Hantel.
+export function IconDumbbell({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M6.5 7v10" />
+      <path d="M17.5 7v10" />
+      <path d="M4 9.5v5" />
+      <path d="M20 9.5v5" />
+      <path d="M6.5 12h11" />
+    </svg>
+  );
+}
