@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { formatBerlinDatum } from "@/lib/timezone";
+import { berlinHeuteAlsDatum, formatBerlinDatum } from "@/lib/timezone";
 import { IconPlus } from "../icons";
 
 type Prioritaet = "NIEDRIG" | "NORMAL" | "HOCH";
@@ -54,6 +53,24 @@ function toDateInputValue(d: Date | string | null): string {
   return iso.slice(0, 10);
 }
 
+const PRIO_RANG: Record<Prioritaet, number> = { HOCH: 0, NORMAL: 1, NIEDRIG: 2 };
+
+/**
+ * Dieselbe Reihenfolge wie die Server-Abfrage (page.tsx): offen vor
+ * erledigt, Priorität absteigend, Fälligkeit aufsteigend (ohne zuletzt).
+ * Im Client sortiert, damit neue und abgehakte Todos sofort an die richtige
+ * Stelle rutschen — router.refresh() setzt den useState-Zustand nicht zurück.
+ */
+function sortiere(todos: Todo[]): Todo[] {
+  const zeit = (d: Date | string | null) => (d ? new Date(d).getTime() : Number.POSITIVE_INFINITY);
+  return [...todos].sort(
+    (a, b) =>
+      Number(a.erledigt) - Number(b.erledigt) ||
+      PRIO_RANG[a.prioritaet] - PRIO_RANG[b.prioritaet] ||
+      zeit(a.faelligkeit) - zeit(b.faelligkeit),
+  );
+}
+
 function todoZuWerten(todo: Todo): TodoWerte {
   return {
     text: todo.text,
@@ -73,9 +90,24 @@ export function TodoListe({
   partnerAName: string;
   partnerBName: string;
 }) {
-  const router = useRouter();
   const [todos, setTodos] = useState<Todo[]>(initial);
   const [bearbeiteId, setBearbeiteId] = useState<string | null>(null);
+
+  // Beim Zurückkehren in die App den Stand holen — der Partner hat vielleicht
+  // inzwischen etwas angelegt oder abgehakt
+  useEffect(() => {
+    async function beiSichtbar() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/todos", { cache: "no-store" });
+        if (res.ok) setTodos(await res.json());
+      } catch {
+        // offline — dann eben beim nächsten Mal
+      }
+    }
+    document.addEventListener("visibilitychange", beiSichtbar);
+    return () => document.removeEventListener("visibilitychange", beiSichtbar);
+  }, []);
 
   async function toggle(todo: Todo) {
     const erledigt = !todo.erledigt;
@@ -85,7 +117,6 @@ export function TodoListe({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ erledigt }),
     });
-    router.refresh();
   }
 
   async function loeschen(id: string) {
@@ -95,13 +126,11 @@ export function TodoListe({
 
   function onCreated(todo: Todo) {
     setTodos((prev) => [...prev, todo]);
-    router.refresh();
   }
 
   function onUpdated(todo: Todo) {
     setTodos((prev) => prev.map((t) => (t.id === todo.id ? todo : t)));
     setBearbeiteId(null);
-    router.refresh();
   }
 
   return (
@@ -112,7 +141,7 @@ export function TodoListe({
         <p className="card text-center text-sm text-muted">Noch keine Todos.</p>
       ) : (
         <ul className="card flex flex-col divide-y divide-border !p-0">
-          {todos.map((todo) =>
+          {sortiere(todos).map((todo) =>
             bearbeiteId === todo.id ? (
               <li key={todo.id} className="px-3.5 py-3">
                 <BearbeitenForm
@@ -150,8 +179,7 @@ function TodoRow({
   onDelete: (id: string) => void;
   onEdit: () => void;
 }) {
-  const heute = new Date();
-  heute.setHours(0, 0, 0, 0);
+  const heute = berlinHeuteAlsDatum();
   const faelligkeitDate = todo.faelligkeit ? new Date(todo.faelligkeit) : null;
   const ueberfaellig = !todo.erledigt && faelligkeitDate !== null && faelligkeitDate < heute;
 
