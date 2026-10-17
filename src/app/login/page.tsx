@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { LoginForm } from "./LoginForm";
@@ -19,6 +20,9 @@ export default async function LoginPage() {
       <div className="w-full max-w-sm">
         <LoginForm />
       </div>
+      <Link href="/passwort-vergessen" className="text-sm text-muted hover:text-foreground">
+        Passwort vergessen?
+      </Link>
     </main>
   );
 }

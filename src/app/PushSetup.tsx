@@ -15,7 +15,8 @@ function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer> {
 
 type Status = "unsupported" | "checking" | "off" | "on";
 
-export function PushSetup() {
+/** nurWennAus: Startseiten-Variante — erscheint nur, solange Push noch nicht aktiv ist. */
+export function PushSetup({ nurWennAus = false }: { nurWennAus?: boolean }) {
   const [status, setStatus] = useState<Status>("checking");
   const [error, setError] = useState<string | null>(null);
   const [testMessage, setTestMessage] = useState<string | null>(null);
@@ -83,6 +84,19 @@ export function PushSetup() {
     }
   }
 
+  if (nurWennAus) {
+    if (status !== "off") return null;
+    return (
+      <div className="card flex flex-col items-center gap-3 text-center">
+        <p className="text-sm text-muted">Erinnerungen kommen nur an, wenn Push aktiv ist.</p>
+        <button onClick={enablePush} disabled={busy} className="btn-primary">
+          Push aktivieren
+        </button>
+        {error && <p className="text-sm text-danger">{error}</p>}
+      </div>
+    );
+  }
+
   if (status === "unsupported") {
     return <p className="text-sm text-muted">Push wird auf diesem Gerät nicht unterstützt.</p>;
   }
@@ -91,7 +105,7 @@ export function PushSetup() {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-start gap-3">
       {status === "off" && (
         <>
           <p className="text-sm text-muted">Erinnerungen kommen nur an, wenn Push aktiv ist.</p>
@@ -99,6 +113,9 @@ export function PushSetup() {
             Push aktivieren
           </button>
         </>
+      )}
+      {status === "on" && (
+        <p className="text-sm text-muted">Push ist auf diesem Gerät aktiv.</p>
       )}
       {status === "on" && (
         <button onClick={sendTest} disabled={busy} className="btn-secondary btn-sm">

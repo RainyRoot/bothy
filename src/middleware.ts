@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyValue } from "@/lib/signed-value";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
-const PUBLIC_PATHS = ["/login", "/setup"];
-const PUBLIC_API_PREFIXES = ["/api/login", "/api/setup"];
+const PUBLIC_PATHS = ["/login", "/setup", "/passwort-vergessen"];
+const PUBLIC_API_PREFIXES = ["/api/login", "/api/setup", "/api/passwort-zuruecksetzen"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

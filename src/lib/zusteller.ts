@@ -100,7 +100,7 @@ async function deliverTermin(
   const body = [vorkommen ? formatBerlinRelativ(vorkommen, termin.ganztags) : null, termin.ort, termin.notiz]
     .filter(Boolean)
     .join(" · ");
-  const erfolg = await pushAnAlle(subscriptions, {
+  const { erfolg, fehler } = await pushAnAlle(subscriptions, {
     title: termin.titel,
     body: body || undefined,
     url: termin.archiviert ? "/" : `/kalender/${termin.id}`,
@@ -108,7 +108,7 @@ async function deliverTermin(
   if (erfolg) {
     await prisma.reminderJob.update({ where: { id: jobId }, data: { sentAt: new Date() } });
   } else {
-    await markFailed("reminderJob", jobId, versuche, subscriptions.length === 0 ? "Keine Push-Subscription" : "Zustellung an keine Subscription erfolgreich");
+    await markFailed("reminderJob", jobId, versuche, fehler);
   }
 }
 
@@ -123,7 +123,7 @@ async function deliverTodo(jobId: string, todoId: string, userId: string, versuc
     return;
   }
 
-  const erfolg = await pushAnAlle(subscriptions, {
+  const { erfolg, fehler } = await pushAnAlle(subscriptions, {
     title: `Todo: ${todo.text}`,
     body: todo.faelligkeit ? `fällig ${formatBerlinRelativ(todo.faelligkeit, true)}` : undefined,
     url: "/todos",
@@ -131,27 +131,34 @@ async function deliverTodo(jobId: string, todoId: string, userId: string, versuc
   if (erfolg) {
     await prisma.todoReminderJob.update({ where: { id: jobId }, data: { sentAt: new Date() } });
   } else {
-    await markFailed("todoReminderJob", jobId, versuche, subscriptions.length === 0 ? "Keine Push-Subscription" : "Zustellung an keine Subscription erfolgreich");
+    await markFailed("todoReminderJob", jobId, versuche, fehler);
   }
 }
 
 async function pushAnAlle(
   subscriptions: { id: string; endpoint: string; p256dh: string; auth: string }[],
   payload: { title: string; body?: string; url?: string },
-): Promise<boolean> {
+): Promise<{ erfolg: boolean; fehler: string }> {
+  if (subscriptions.length === 0) return { erfolg: false, fehler: "Kein Gerät mit aktivem Push" };
   let anySuccess = false;
+  const fehler: string[] = [];
   for (const subscription of subscriptions) {
     try {
       await sendPush(subscription, payload);
       anySuccess = true;
+      // Für die Zustell-Übersicht in den Einstellungen: wann kam zuletzt etwas an
+      await prisma.pushSubscription
+        .update({ where: { id: subscription.id }, data: { lastOkAt: new Date() } })
+        .catch(() => {});
     } catch (err) {
       const statusCode = (err as { statusCode?: number } | null)?.statusCode;
-      if (statusCode === 410) {
+      fehler.push(statusCode ? `HTTP ${statusCode}` : err instanceof Error ? err.message : "unbekannt");
+      if (statusCode === 410 || statusCode === 404) {
         await prisma.pushSubscription.delete({ where: { id: subscription.id } }).catch(() => {});
       }
     }
   }
-  return anySuccess;
+  return { erfolg: anySuccess, fehler: `Zustellung fehlgeschlagen: ${fehler.join(", ")}`.slice(0, 500) };
 }
 
 async function markFailed(
