@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { berlinHeute } from "@/lib/timezone";
 import { montagDerWoche } from "@/lib/essensplan-shared";
 import { AppShell } from "../AppShell";
+import { EssenUmschalter } from "../EssenUmschalter";
 import { EinkaufslisteClient } from "./EinkaufslisteClient";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +31,8 @@ export default async function EinkaufslistePage({
   ]);
 
   return (
-    <AppShell title="Einkaufsliste" back={`/essensplan?woche=${woche}`}>
+    <AppShell title="Essen">
+      <EssenUmschalter aktiv="liste" woche={woche} />
       <EinkaufslisteClient woche={woche} initial={liste} toepfe={toepfe} />
     </AppShell>
   );

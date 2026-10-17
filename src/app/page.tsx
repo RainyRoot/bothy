@@ -29,8 +29,15 @@ export default async function Home() {
     prisma.todo.count({ where: { erledigt: false } }),
   ]);
 
-  const gesamtCent = toepfe.reduce((summe, t) => summe + t.standCent, 0);
-  const toepfeHint = toepfe.length === 0 ? "Noch keine Töpfe" : `${formatCent(gesamtCent)} gesamt`;
+  // Nur Verbrauchstöpfe: Sparziele mit Einkaufsgeld zu addieren ergibt keine sinnvolle Zahl
+  const verbrauch = toepfe.filter((t) => t.typ === "VERBRAUCH");
+  const verfuegbarCent = verbrauch.reduce((summe, t) => summe + t.standCent, 0);
+  const toepfeHint =
+    toepfe.length === 0
+      ? "Noch keine Töpfe"
+      : verbrauch.length === 0
+        ? `${toepfe.length} Sparziel${toepfe.length > 1 ? "e" : ""}`
+        : `${formatCent(verfuegbarCent)} zum Ausgeben`;
   const naechsterTermin = naechsteTermine[0];
   const kalenderHint = naechsterTermin
     ? `${naechsterTermin.titel} · ${formatBerlinDatum(naechsterTermin.datum)}`

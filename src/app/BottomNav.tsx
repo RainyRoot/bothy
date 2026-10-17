@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconHome, IconJar, IconCalendar, IconUtensils, IconCart, IconChecklist } from "./icons";
+import { IconHome, IconJar, IconCalendar, IconUtensils, IconChecklist } from "./icons";
 
 const ITEMS = [
   { href: "/", label: "Start", Icon: IconHome, match: (p: string) => p === "/" },
   { href: "/toepfe", label: "Töpfe", Icon: IconJar, match: (p: string) => p.startsWith("/toepfe") },
   { href: "/kalender", label: "Kalender", Icon: IconCalendar, match: (p: string) => p.startsWith("/kalender") },
   { href: "/todos", label: "Todos", Icon: IconChecklist, match: (p: string) => p.startsWith("/todos") },
-  { href: "/essensplan", label: "Essen", Icon: IconUtensils, match: (p: string) => p.startsWith("/essensplan") },
-  { href: "/einkaufsliste", label: "Liste", Icon: IconCart, match: (p: string) => p.startsWith("/einkaufsliste") },
+  // Essensplan + Einkaufsliste in einem Tab, Umschalter oben auf der Seite (EssenUmschalter)
+  {
+    href: "/essensplan",
+    label: "Essen",
+    Icon: IconUtensils,
+    match: (p: string) => p.startsWith("/essensplan") || p.startsWith("/einkaufsliste"),
+  },
 ];
 
 export function BottomNav() {

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { berlinHeute } from "@/lib/timezone";
 import { montagDerWoche, addTage } from "@/lib/essensplan-shared";
 import { AppShell } from "../AppShell";
+import { EssenUmschalter } from "../EssenUmschalter";
 import { Wochenplan } from "./Wochenplan";
 import { IconChevronLeft, IconCart } from "../icons";
 
@@ -33,14 +34,9 @@ export default async function EssensplanPage({
   const naechsteWoche = addTage(montag, 7);
 
   return (
-    <AppShell
-      title="Essensplan"
-      action={
-        <Link href={`/einkaufsliste?woche=${montag}`} className="icon-btn" aria-label="Einkaufsliste">
-          <IconCart className="h-5 w-5" />
-        </Link>
-      }
-    >
+    <AppShell title="Essen">
+      <EssenUmschalter aktiv="plan" woche={montag} />
+
       <div className="flex items-center justify-between">
         <Link href={`/essensplan?woche=${vorherigeWoche}`} className="icon-btn -ml-2" aria-label="Vorherige Woche">
           <IconChevronLeft className="h-5 w-5" />
